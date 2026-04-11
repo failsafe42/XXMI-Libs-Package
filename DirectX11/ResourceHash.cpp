@@ -1625,18 +1625,19 @@ static bool matches_draw_info(TextureOverride *tex_override, DrawCallInfo *call_
 	if (!call_info)
 		return false;
 
-	if (!tex_override->match_first_vertex.matches_uint(call_info->FirstVertex))
+	if (!tex_override->match_index_count.matches_uint(call_info->IndexCount))
 		return false;
 	if (!tex_override->match_first_index.matches_uint(call_info->FirstIndex))
 		return false;
-	if (!tex_override->match_first_instance.matches_uint(call_info->FirstInstance))
-		return false;
 	if (!tex_override->match_vertex_count.matches_uint(call_info->VertexCount))
 		return false;
-	if (!tex_override->match_index_count.matches_uint(call_info->IndexCount))
+	if (!tex_override->match_first_vertex.matches_uint(call_info->FirstVertex))
 		return false;
 	if (!tex_override->match_instance_count.matches_uint(call_info->InstanceCount))
 		return false;
+	if (!tex_override->match_first_instance.matches_uint(call_info->FirstInstance))
+		return false;
+
 	return true;
 }
 
@@ -1655,23 +1656,67 @@ void find_texture_override_for_hash(uint32_t hash, TextureOverrideMatches *match
 	}
 }
 
-static void find_texture_override_for_resource_by_hash(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
+static uint32_t get_hash_for_resource(ID3D11Resource* resource)
 {
-	uint32_t hash = 0;
-
 	if (!resource)
-		return;
+		return 0;
 
+	EnterCriticalSectionPretty(&G->mCriticalSection);
+	uint32_t hash = GetResourceHash(resource);
+	LeaveCriticalSection(&G->mCriticalSection);
+
+	return hash;
+}
+
+void find_texture_overrides_for_resource_by_hash(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
+{
 	if (G->mTextureOverrideMap.empty())
 		return;
 
-	EnterCriticalSectionPretty(&G->mCriticalSection);
-		hash = GetResourceHash(resource);
-	LeaveCriticalSection(&G->mCriticalSection);
+	uint32_t hash = get_hash_for_resource(resource);
 	if (!hash)
 		return;
 
 	find_texture_override_for_hash(hash, matches, call_info);
+}
+
+TextureOverrideFuzzyMatches* get_fuzzy_matches_by_draw_info(DrawCallInfo* call_info)
+{
+	if (call_info->IndexCount)
+	{
+		auto it = G->mTextureOverrideDrawIndexMap.find(call_info->IndexCount);
+		if (it != G->mTextureOverrideDrawIndexMap.end()) {
+			return &it->second;
+		}
+	}
+	else if (call_info->VertexCount)
+	{
+		auto it = G->mTextureOverrideDrawVertexMap.find(call_info->VertexCount);
+		if (it != G->mTextureOverrideDrawVertexMap.end()){
+			return &it->second;
+		}
+	}
+	return nullptr;
+}
+
+void find_texture_overrides_by_hash_from_fuzzy_matches(uint32_t hash, TextureOverrideFuzzyMatches* fuzzy_matches, TextureOverrideMatches* matches, DrawCallInfo* call_info)
+{
+	TextureOverrideFuzzyMatches::iterator it;
+
+	for (it = fuzzy_matches->begin(); it != fuzzy_matches->end(); ++it) {
+		if (it->hash == hash && matches_draw_info(it->texture_override, call_info)) {
+			matches->push_back(it->texture_override);
+		}
+	}
+}
+
+void find_texture_overrides_for_resource_by_hash_from_fuzzy_matches(ID3D11Resource* resource, TextureOverrideFuzzyMatches* fuzzy_matches, TextureOverrideMatches* matches, DrawCallInfo* call_info)
+{
+	uint32_t hash = get_hash_for_resource(resource);
+	if (!hash)
+		return;
+
+	find_texture_overrides_by_hash_from_fuzzy_matches(hash, fuzzy_matches, matches, call_info);
 }
 
 template <typename DescType>
@@ -1704,19 +1749,45 @@ template void find_texture_overrides<D3D11_TEXTURE1D_DESC>(uint32_t hash, const 
 template void find_texture_overrides<D3D11_TEXTURE2D_DESC>(uint32_t hash, const D3D11_TEXTURE2D_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 template void find_texture_overrides<D3D11_TEXTURE3D_DESC>(uint32_t hash, const D3D11_TEXTURE3D_DESC *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 
-void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
+void find_texture_overrides_for_resource_desc(ID3D11Resource* resource, TextureOverrideMatches* matches, DrawCallInfo* call_info)
 {
 	D3D11_RESOURCE_DIMENSION dimension;
-	ID3D11Buffer *buf = NULL;
-	ID3D11Texture1D *tex1d = NULL;
-	ID3D11Texture2D *tex2d = NULL;
-	ID3D11Texture3D *tex3d = NULL;
-	D3D11_BUFFER_DESC buf_desc;
-	D3D11_TEXTURE1D_DESC tex1d_desc;
-	D3D11_TEXTURE2D_DESC tex2d_desc;
-	D3D11_TEXTURE3D_DESC tex3d_desc;
+	resource->GetType(&dimension);
+	switch (dimension) {
+		case D3D11_RESOURCE_DIMENSION_BUFFER:
+		{
+			ID3D11Buffer* buf = (ID3D11Buffer*)resource;
+			D3D11_BUFFER_DESC buf_desc;
+			buf->GetDesc(&buf_desc);
+			return find_texture_overrides_for_desc(&buf_desc, matches, call_info);
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+		{
+			ID3D11Texture1D* tex1d = (ID3D11Texture1D*)resource;
+			D3D11_TEXTURE1D_DESC tex1d_desc;
+			tex1d->GetDesc(&tex1d_desc);
+			return find_texture_overrides_for_desc(&tex1d_desc, matches, call_info);
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+		{
+			ID3D11Texture2D* tex2d = (ID3D11Texture2D*)resource;
+			D3D11_TEXTURE2D_DESC tex2d_desc;
+			tex2d->GetDesc(&tex2d_desc);
+			return find_texture_overrides_for_desc(&tex2d_desc, matches, call_info);
+		}
+		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+		{
+			ID3D11Texture3D* tex3d = (ID3D11Texture3D*)resource;
+			D3D11_TEXTURE3D_DESC tex3d_desc;
+			tex3d->GetDesc(&tex3d_desc);
+			return find_texture_overrides_for_desc(&tex3d_desc, matches, call_info);
+		}
+	}
+}
 
-	find_texture_override_for_resource_by_hash(resource, matches, call_info);
+void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info)
+{
+	find_texture_overrides_for_resource_by_hash(resource, matches, call_info);
 
 	// Allow fuzzy matches to be processed even when exact matches exist
 	//if (!matches->empty()) {
@@ -1725,25 +1796,7 @@ void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverri
 	//	return;
 	//}
 
-	resource->GetType(&dimension);
-	switch (dimension) {
-		case D3D11_RESOURCE_DIMENSION_BUFFER:
-			buf = (ID3D11Buffer*)resource;
-			buf->GetDesc(&buf_desc);
-			return find_texture_overrides_for_desc(&buf_desc, matches, call_info);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-			tex1d = (ID3D11Texture1D*)resource;
-			tex1d->GetDesc(&tex1d_desc);
-			return find_texture_overrides_for_desc(&tex1d_desc, matches, call_info);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			tex2d = (ID3D11Texture2D*)resource;
-			tex2d->GetDesc(&tex2d_desc);
-			return find_texture_overrides_for_desc(&tex2d_desc, matches, call_info);
-		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			tex3d = (ID3D11Texture3D*)resource;
-			tex3d->GetDesc(&tex3d_desc);
-			return find_texture_overrides_for_desc(&tex3d_desc, matches, call_info);
-	}
+	find_texture_overrides_for_resource_desc(resource, matches, call_info);
 }
 
 bool TextureOverrideLess(const struct TextureOverride &lhs, const struct TextureOverride &rhs)
@@ -1773,16 +1826,19 @@ void RegionHashesCache::Initialize(size_t buffer_size)
 	//LogInfo("RegionHashesCache::Initialize buffer_size=%d \n", buffer_size);
 	UINT num_pages = (UINT)((buffer_size + PAGE_SIZE - 1) / PAGE_SIZE);
 	page_versions.assign(num_pages, 0);
-	// Reserve to avoid container rehashing during runtime.
-	cache = FlatHashMap<UINT, RegionCacheEntry>(buffer_size / PAGE_SIZE / 2);
+	if (cache)
+		cache->clear();
 }
 
 // Store hash together with the current page version.
 // This allows fast invalidation by comparing stored version vs current page version.
-void RegionHashesCache::Add(UINT offset, uint32_t hash)
+void RegionHashesCache::Add(const RegionHashKeyL2& key, uint32_t hash)
 {
+	if (!cache)
+		cache = std::make_unique<FlatHashMap<RegionHashKeyL2, RegionCacheEntry, RegionHashKeyHasherL2>>(page_versions.size() / (PAGE_SIZE / HASHES_PER_PAGE));
+
 	// Compute page index for this offset.
-	UINT page = offset / PAGE_SIZE;
+	UINT page = key.offset / PAGE_SIZE;
 	if (page >= page_versions.size())
 		return;
 
@@ -1790,17 +1846,20 @@ void RegionHashesCache::Add(UINT offset, uint32_t hash)
 	entry.hash = hash;
 	entry.version = page_versions[page];
 
-	cache.insert(offset, entry);
+	cache->insert(key, entry);
 }
 
-uint32_t RegionHashesCache::Get(UINT offset)
+uint32_t RegionHashesCache::Get(const RegionHashKeyL2& key)
 {
-	UINT page = offset / PAGE_SIZE;
+	if (!cache)
+		return 0;
+
+	UINT page = key.offset / PAGE_SIZE;
 	if (page >= page_versions.size())
 		return 0;
 
 	// Lookup exact offset (hot path, performance critical).
-	const RegionCacheEntry* entry = cache.find_ptr(offset);
+	const RegionCacheEntry* entry = cache->find_ptr(key);
 	if (!entry)
 		return 0;
 
@@ -1814,7 +1873,7 @@ uint32_t RegionHashesCache::Get(UINT offset)
 
 size_t RegionHashesCache::GetSize()
 {
-	return cache.size();
+	return cache ? cache->size() : 0;
 }
 
 // Invalidate a byte range by bumping page versions.
@@ -1848,7 +1907,8 @@ void RegionHashesCache::Invalidate(UINT start, UINT end)
 void RegionHashesCache::Clear()
 {
 	//LogInfo("RegionHashesCache::Clear\n");
-	cache.clear();
+	if (cache)
+		cache->clear();
 	// Reset all versions so existing entries (if any reused) become invalid.
 	std::fill(page_versions.begin(), page_versions.end(), 0);
 }
@@ -1857,21 +1917,19 @@ void RegionHashesCache::Clear()
 // This buffer allows hashing without repeated GPU Map() calls.
 void ResourceHandleInfo::InitializeDataCache(size_t size)
 {
-	//LogInfo("ResourceHandleInfo::InitializeDataCache size=%d\n", size);
-
+	// Initialize region hashes cache.
+	if (!region_hashes_cache)
+		region_hashes_cache = std::make_unique<RegionHashesCache>();
+	//LogInfo("InitializeDataCache size=%d\n", size);
 	if (!cached_data_size) {
 		// First-time initialization.
-		cached_data.resize(size);
 		cached_data_size = size;
 		// Initialize region cache for this buffer size.
-		region_hashes_cache.Initialize(size);
+		region_hashes_cache->Initialize(size);
 	} else {
 		// Buffer reused: invalidate all region hashes.
-		region_hashes_cache.Clear();
+		region_hashes_cache->Clear();
 	}
-
-	// Mark snapshot as invalid until data is written.
-	cached_data_valid = false;
 }
 
 void ResourceHandleInfo::WriteDataCache(const void* src, size_t size)
@@ -1879,22 +1937,24 @@ void ResourceHandleInfo::WriteDataCache(const void* src, size_t size)
 	if (!src)
 		return;
 
-	//LogInfo("ResourceHandleInfo::WriteDataCache size=%d\n", size);
+	//LogInfo("WriteDataCache size=%d\n", size);
 
 	InitializeDataCache(size);
 
+	if (cached_data) {
+		free(cached_data);
+		cached_data = nullptr;
+	}
+
 	// Full overwrite of CPU snapshot.
-	memcpy(cached_data.data(), src, size);
+	cached_data = (uint8_t*)src;
 
-	// Snapshot is now valid for hashing.
-	cached_data_valid = true;
-
-	//info->cached_data_hash = crc32c_hw(0, info->cached_data.data(), size);
+	//info->cached_data_hash = crc32c_hw(0, info->cached_data, size);
 }
 
 void ResourceHandleInfo::WriteDataCacheRegion(const void* src, size_t region_size, UINT offset)
 {
-	if (!src)
+	if (!src || !region_size)
 		return;
 
 	// Cannot write partial region if cache not initialized.
@@ -1903,55 +1963,69 @@ void ResourceHandleInfo::WriteDataCacheRegion(const void* src, size_t region_siz
 		return;
 	}
 
-	//LogInfo("ResourceHandleInfo::WriteDataCacheRegion offset=%d, region_size=%d!\n", offset, region_size);
-
 	if (offset > cached_data_size || region_size > cached_data_size - offset){
 		LogInfo("WriteDataCacheRegion Failed (out of bounds): offset=%d, region_size=%d, dst_size=%d!\n", offset, region_size, cached_data_size);
 		return;
 	}
 
+	//LogInfo("WriteDataCacheRegion: offset=%d, region_size=%d!\n", offset, region_size);
+
+	if (!cached_data)
+		cached_data = (uint8_t*)malloc(cached_data_size);
+
+	if (cached_data) {
 	// Update only the affected region.
-	memcpy(cached_data.data() + offset, src, region_size);
+		memcpy(cached_data + offset, src, region_size);
+	}
 
-	// Invalidate only affected pages (cheap, avoids clearing whole cache).
-	region_hashes_cache.Invalidate(offset, offset + (UINT)region_size);
-
-	// Snapshot is now valid for hashing.
-	cached_data_valid = true;
+	// Invalidate only affected pages (cheap, avoids clearing the whole cache).
+	if (region_hashes_cache)
+		region_hashes_cache->Invalidate(offset, offset + (UINT)region_size);
 }
 
 // Clears all cached region hashes and invalidates the CPU-side buffer snapshot.
 // This forces region hashes to be recomputed the next time they are requested.
 void ResourceHandleInfo::ClearDataCache()
 {
-	if (!cached_data_valid)
+	if (!cached_data_size)
 		return;
+
 	//LogInfo("ResourceHandleInfo::ClearDataCache\n");
+
+	if (cached_data) {
+		free(cached_data);
+		cached_data = nullptr;
+	}
+	cached_data_size = 0;
+
 	// Drop all cached hashes and CPU snapshot.
-	region_hashes_cache.Clear();
-	cached_data.clear();
-
-	cached_data_valid = false;
+	if (region_hashes_cache)
+		region_hashes_cache->Clear();
 }
 
-void ResourceHandleInfo::CacheRegionHash(UINT offset, uint32_t hash)
+void ResourceHandleInfo::CacheRegionHash(const RegionHashKeyL2& key, uint32_t hash)
 {
-	region_hashes_cache.Add(offset, hash);
+	if (region_hashes_cache)
+		region_hashes_cache->Add(key, hash);
 }
 
-uint32_t ResourceHandleInfo::GetCachedRegionHash(UINT offset)
+uint32_t ResourceHandleInfo::GetCachedRegionHash(const RegionHashKeyL2& key)
 {
-	return region_hashes_cache.Get(offset);
+	if (!region_hashes_cache)
+		return 0;
+	return region_hashes_cache->Get(key);
 }
 
 // Helper function that clears region hash cache for a specific D3D resource.
 // Used when the underlying resource contents may have changed.
 void ClearResourceRegionHashCache(ID3D11Resource* resource)
 {
-	ResourceHandleInfo* info = GetResourceHandleInfo(resource);
-	if (!info)
-		return;
 	EnterCriticalSectionPretty(&G->mCriticalSection);
+	ResourceHandleInfo* info = GetResourceHandleInfo(resource);
+	if (!info) {
+		LeaveCriticalSection(&G->mCriticalSection);
+		return;
+	}
 	info->ClearDataCache();
 	LeaveCriticalSection(&G->mCriticalSection);
 }
@@ -1967,7 +2041,7 @@ static bool CacheBufferData(ID3D11DeviceContext* context, ID3D11Buffer* buffer, 
 	// Fast path: reuse existing CPU snapshot.
 	// Avoids expensive GPU sync (CopyResource + Map).
 	EnterCriticalSectionPretty(&G->mCriticalSection);
-	if (handle_info->cached_data_valid) {
+	if (handle_info->cached_data_size) {
 		LeaveCriticalSection(&G->mCriticalSection);
 		return true;
 	}
@@ -2030,6 +2104,19 @@ static bool CacheBufferData(ID3D11DeviceContext* context, ID3D11Buffer* buffer, 
 	return true;
 }
 
+UINT GetVertexBufferRegionOffset(UINT stride, DrawCallInfo* call_info, UINT byte_offset)
+{
+	UINT byte_size = stride * call_info->FirstVertex;
+	return byte_offset + byte_size;
+}
+
+UINT GetIndexBufferRegionOffset(DXGI_FORMAT format, DrawCallInfo* call_info, UINT byte_offset)
+{
+	UINT index_stride = (format == DXGI_FORMAT_R32_UINT) ? 4 : 2;
+	UINT byte_size = index_stride * call_info->FirstIndex;
+	return byte_offset + byte_size;
+}
+
 // Computes the byte size of the vertex buffer region used by a draw call.
 // Used to determine how much data should be hashed for change detection.
 UINT GetVertexBufferRegionSize(UINT stride, DrawCallInfo* call_info)
@@ -2051,34 +2138,11 @@ UINT GetIndexBufferRegionSize(DXGI_FORMAT format, DrawCallInfo* call_info)
 	return region_size;
 }
 
-struct RegionHashKey
-{
-	uint64_t ptr;
-	uint32_t offset;
-	uint32_t size;
-
-	bool operator==(const RegionHashKey& other) const
-	{
-		return ptr == other.ptr && offset == other.offset && size == other.size;
-	}
-};
-
-struct RegionHashKeyHasher
-{
-	size_t operator()(const RegionHashKey& k) const
-	{
-		uint64_t h = k.ptr;
-		h ^= (uint64_t)k.offset << 32;
-		h ^= (uint64_t)k.size;
-		return h;
-	}
-};
-
 // Global "L3" cache with per-frame reset in HackerSwapChain::Present.
 // Optimized for single global "entry point" into TextureOverride's, e.g. `CheckTextureOverride = ib` from global ShaderRegEx.
 // Usually, total number of handles is 5-10 times bigger than of ones bound to some specific slot.
 // So lookup in dedicated continuous container is expected to be always faster than one in huge unordered map. 
-FlatHashMap<RegionHashKey, uint32_t, RegionHashKeyHasher> region_hashes_global_cache(4096);
+FlatHashMap<RegionHashKeyL3, uint32_t, RegionHashKeyHasherL3> region_hashes_global_cache(1024);
 
 void ClearRegionHashesGlobalCache()
 {
@@ -2093,10 +2157,9 @@ uint32_t GetRegionHash(ID3D11DeviceContext* context, ID3D11Buffer* buffer, UINT 
 		return 0;
 	}
 
-	RegionHashKey cache_key{ (uint64_t)buffer, offset, size };
-
 	// Lookup offset in fast L3 cache without any locking involved.
-	if (uint32_t* h = region_hashes_global_cache.find_ptr(cache_key))
+	RegionHashKeyL3 level_3_cache_key{ (uint64_t)buffer, offset, size };
+	if (uint32_t* h = region_hashes_global_cache.find_ptr(level_3_cache_key))
 	{
 		//LogInfo("GetRegionHash: From L3 cache: hash=%08lx, offset=%d, size=%d, pResource=0x%p, cache_size=%d \n", *h, offset, size, buffer, region_hashes_global_cache.size());
 		return *h;
@@ -2114,11 +2177,12 @@ uint32_t GetRegionHash(ID3D11DeviceContext* context, ID3D11Buffer* buffer, UINT 
 	uint32_t hash;
 
 	// Lookup offset in L2 cache. This one is slower and requires `handle_info` lookup.
-	hash = handle_info->GetCachedRegionHash(offset);
+	RegionHashKeyL2 level_2_cache_key{ (uint64_t)offset, size };
+	hash = handle_info->GetCachedRegionHash(level_2_cache_key);
 	if (hash) {
-		region_hashes_global_cache.insert(cache_key, hash);
+		region_hashes_global_cache.insert(level_3_cache_key, hash);
 		LeaveCriticalSection(&G->mCriticalSection);
-		//LogInfo("GetRegionHash: From L2 cache: hash=%08lx, offset=%d, size=%d, full_hash=%08lx, pResource=0x%p, cache_size=%d \n", hash, offset, size, handle_info->hash, buffer, handle_info->region_hashes_cache.GetSize());
+		//LogInfo("GetRegionHash: From L2 cache: hash=%08lx, offset=%d, size=%d, full_hash=%08lx, pResource=0x%p, cache_size=%d \n", hash, offset, size, handle_info->hash, buffer, handle_info->region_hashes_cache->GetSize());
 		return hash;
 	}
 
@@ -2135,21 +2199,21 @@ uint32_t GetRegionHash(ID3D11DeviceContext* context, ID3D11Buffer* buffer, UINT 
 	}
 
 	// Make pointer for given offset in L1 cache (raw data).
-	const uint8_t* ptr = handle_info->cached_data.data() + offset;
+	const uint8_t* ptr = handle_info->cached_data + offset;
 
 	// Compute CRC32 hash for the region.
 	hash = crc32c_hw(0, ptr, size);
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
 
-	// Store computed hash in the region cache.
-	handle_info->CacheRegionHash(offset, hash);
-	// Store computed hash in the global region cache.
-	region_hashes_global_cache.insert(cache_key, hash);
+	// Store computed region hash in the L2 cache (local per ResourceHandleInfo).
+	handle_info->CacheRegionHash(level_2_cache_key, hash);
+	// Store computed region hash in the L3 cache (global per-frame).
+	region_hashes_global_cache.insert(level_3_cache_key, hash);
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
-	//LogInfo("GetRegionHash: New hash: frame=%d, hash=%08lx, offset=%d, size=%d, full_hash=%08lx, pResource=0x%p, cache_size=%d, data_hash=%08lx \n", G->frame_no, hash, offset, size, handle_info->hash, buffer, handle_info->region_hashes_cache.GetSize(), handle_info->cached_data_hash);
+	//LogInfo("GetRegionHash: New hash: frame=%d, hash=%08lx, offset=%d, size=%d, full_hash=%08lx, pResource=0x%p, cache_size=%d, data_hash=%08lx \n", G->frame_no, hash, offset, size, handle_info->hash, buffer, handle_info->region_hashes_cache->GetSize(), handle_info->cached_data_hash);
 
 	return hash;
 }

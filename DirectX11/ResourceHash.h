@@ -233,6 +233,49 @@ private:
 	}
 };
 
+struct RegionHashKeyL2
+{
+	uint32_t offset;
+	uint32_t size;
+
+	bool operator==(const RegionHashKeyL2& other) const
+	{
+		return offset == other.offset && size == other.size;
+	}
+};
+
+struct RegionHashKeyHasherL2
+{
+	size_t operator()(const RegionHashKeyL2& k) const
+	{
+		return (static_cast<uint64_t>(k.offset) << 32) | k.size;
+	}
+};
+
+struct RegionHashKeyL3
+{
+	uint64_t ptr;
+	uint32_t offset;
+	uint32_t size;
+
+	bool operator==(const RegionHashKeyL3& other) const
+	{
+		return ptr == other.ptr && offset == other.offset && size == other.size;
+	}
+};
+
+struct RegionHashKeyHasherL3
+{
+	size_t operator()(const RegionHashKeyL3& k) const
+	{
+		uint64_t h = k.ptr;            // Use 64-bit pointer as base
+		h ^= (uint64_t)k.offset << 32; // XOR offset with upper bits
+		h ^= (uint64_t)k.size;         // XOR size with lower bits
+		h ^= h >> 32;                  // XOR ptr+size entropy with lower bits
+		return h;
+	}
+};
+
 struct RegionHashesCache
 {
 	struct RegionCacheEntry {
@@ -240,11 +283,19 @@ struct RegionHashesCache
 		uint32_t version;
 	};
 public:
+	// Data cache invalidation step size in bytes.
+	// So, for page size of 256 and buffer size of 16MB we'll get 16MB/256=65536 page count.
+	// Page size of 256 looks like a good balance between invalidation precision and memory usage.
 	static constexpr UINT PAGE_SIZE = 256;
+	// How many region hashes we expect to use per page.
+	// Controls initial L2 cache size.
+	// So, for 2 hashes per page, page size of 256 and 65536 pages we'll get 65536/(256/2)=512 size.
+	// If we're interested in region hashes only as entry points, 512 unique IB/VB0 per 16MB should be a good start.
+	static constexpr UINT HASHES_PER_PAGE = 2;
 
 	void Initialize(size_t buffer_size);
-	void Add(UINT offset, uint32_t hash);
-	uint32_t Get(UINT offset);
+	void Add(const RegionHashKeyL2& key, uint32_t hash);
+	uint32_t Get(const RegionHashKeyL2& key);
 	size_t GetSize();
 	void Invalidate(UINT start, UINT end);
 	void Clear();
@@ -253,7 +304,7 @@ private:
 	// Cache of per-region hashes for given buffer.
 	// Key = region offset, Value = CRC32 hash of that region.
 	// Avoids recomputing hashes for the same draw-call regions.
-	FlatHashMap<UINT, RegionCacheEntry> cache;
+	std::unique_ptr <FlatHashMap<RegionHashKeyL2, RegionCacheEntry, RegionHashKeyHasherL2>> cache;
 	std::vector<UINT> page_versions;
 };
 
@@ -264,6 +315,15 @@ struct ResourceHandleInfo
 	uint32_t hash;
 	uint32_t orig_hash;	// Original hash at the time of creation
 	uint32_t data_hash;	// Just the data hash for track_texture_updates
+
+	// CPU-side copy of the resource data captured via hooks or staging buffer.
+	// Used to compute hashes for arbitrary regions without re-mapping
+	// the GPU resource multiple times.
+	uint8_t* cached_data;
+	size_t cached_data_size = 0;
+	//uint32_t cached_data_hash = 0;
+
+	std::unique_ptr<RegionHashesCache> region_hashes_cache;
 
 	// TODO: If we are sure we understand all possible differences between
 	// the original desc and that obtained by querying the resource we
@@ -282,21 +342,17 @@ struct ResourceHandleInfo
 		type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
 		hash(0),
 		orig_hash(0),
-		data_hash(0)
+		data_hash(0),
+		cached_data(nullptr)
 	{}
 
-	RegionHashesCache region_hashes_cache;
-
-	// CPU-side copy of the resource data captured via a staging buffer.
-	// Used to compute hashes for arbitrary regions without re-mapping
-	// the GPU resource multiple times.
-	std::vector<uint8_t> cached_data;
-	size_t cached_data_size = 0;
-
-	// Indicates whether cached_data currently contains a valid snapshot
-	// of the resource contents.
-	bool cached_data_valid = false;
-	uint32_t cached_data_hash = 0;
+	~ResourceHandleInfo()
+	{
+		if (cached_data) {
+			free(cached_data);
+			cached_data = nullptr;
+		}
+	}
 
 	void InitializeDataCache(size_t size);
 	void WriteDataCache(const void* src, size_t size);
@@ -305,8 +361,8 @@ struct ResourceHandleInfo
 	// Should be called when the underlying resource contents change.
 	void ClearDataCache();
 
-	void CacheRegionHash(UINT offset, uint32_t hash);
-	uint32_t GetCachedRegionHash(UINT offset);
+	void CacheRegionHash(const RegionHashKeyL2& key, uint32_t hash);
+	uint32_t GetCachedRegionHash(const RegionHashKeyL2& key);
 };
 
 struct CopySubresourceRegionContamination
@@ -462,6 +518,8 @@ uint32_t GetOrigResourceHash(ID3D11Resource *resource);
 uint32_t GetResourceHash(ID3D11Resource *resource);
 static bool CacheBufferData(ID3D11DeviceContext* context, ID3D11Buffer* buffer, ResourceHandleInfo* info);
 void ClearResourceRegionHashCache(ID3D11Resource* resource);
+UINT GetVertexBufferRegionOffset(UINT stride, DrawCallInfo* call_info, UINT byte_offset);
+UINT GetIndexBufferRegionOffset(DXGI_FORMAT format, DrawCallInfo* call_info, UINT byte_offset);
 UINT GetIndexBufferRegionSize(DXGI_FORMAT format, DrawCallInfo* call_info);
 UINT GetVertexBufferRegionSize(UINT stride, DrawCallInfo* call_info);
 uint32_t GetRegionHash(ID3D11DeviceContext* context, ID3D11Buffer* buffer, UINT offset, UINT size);
@@ -692,9 +750,22 @@ typedef std::set<std::shared_ptr<FuzzyMatchResourceDesc>, FuzzyMatchResourceDesc
 
 typedef std::vector<TextureOverride*> TextureOverrideMatches;
 
+struct TextureOverrideFuzzyMatch {
+	uint32_t hash;
+	TextureOverride* texture_override;
+};
+typedef std::vector<TextureOverrideFuzzyMatch> TextureOverrideFuzzyMatches;
+
+TextureOverrideFuzzyMatches* get_fuzzy_matches_by_draw_info(DrawCallInfo* call_info);
+
 template <typename DescType>
 void find_texture_overrides(uint32_t hash, const DescType *desc, TextureOverrideMatches *matches, DrawCallInfo *call_info);
+void find_texture_overrides_for_resource_by_hash(ID3D11Resource* resource, TextureOverrideMatches* matches, DrawCallInfo* call_info);
+void find_texture_overrides_for_resource_desc(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 void find_texture_overrides_for_resource(ID3D11Resource *resource, TextureOverrideMatches *matches, DrawCallInfo *call_info);
 void find_texture_override_for_hash(uint32_t hash, TextureOverrideMatches* matches, DrawCallInfo* call_info);
+
+void find_texture_overrides_by_hash_from_fuzzy_matches(uint32_t hash, TextureOverrideFuzzyMatches* fuzzy_matches, TextureOverrideMatches* matches, DrawCallInfo* call_info);
+void find_texture_overrides_for_resource_by_hash_from_fuzzy_matches(ID3D11Resource* resource, TextureOverrideFuzzyMatches* fuzzy_matches, TextureOverrideMatches* matches, DrawCallInfo* call_info);
 
 void ClearRegionHashesGlobalCache();

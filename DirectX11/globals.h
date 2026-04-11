@@ -391,6 +391,10 @@ enum class AsyncQueryType
 	COUNTER,
 };
 
+struct ShaderModelCacheEntry {
+	std::string shaderModel;
+};
+
 struct Globals
 {
 	bool gInitialized;
@@ -508,6 +512,12 @@ struct Globals
 
 	CRITICAL_SECTION mCriticalSection;
 
+	std::set<uint32_t> gVisitedVertexBufferSlotIds;
+	INT gSelectedVertexBufferSlotId;
+	bool gResetSelectedVertexBufferSlotId;
+	DrawCallInfo gSelectedIndexBufferDrawInfo;
+	DrawCallInfo gSelectedVertexBufferDrawInfo;
+
 	float mVisitedBuffersLastPurgeTime;
 	std::unordered_map<uint32_t, unsigned> mVisitedIndexBuffersLastSeenFrame;
 	std::unordered_map<uint32_t, unsigned> mVisitedVertexBuffersLastSeenFrame;
@@ -560,6 +570,11 @@ struct Globals
 	ShaderOverrideMap mShaderOverrideMap;
 	TextureOverrideMap mTextureOverrideMap;
 	FuzzyTextureOverrides mFuzzyTextureOverrides;
+
+	std::unordered_map<UINT64, ShaderModelCacheEntry> mShaderModelCache;
+
+	unordered_map<uint32_t, TextureOverrideFuzzyMatches> mTextureOverrideDrawIndexMap;  // Contains hash+TextureOverrides pairs indexed by match_index_count
+	unordered_map<uint32_t, TextureOverrideFuzzyMatches> mTextureOverrideDrawVertexMap; // Contains hash+TextureOverrides pairs indexed by match_vertex_count
 
 	// Statistics
 	///////////////////////////////////////////////////////////////////////
@@ -644,6 +659,8 @@ struct Globals
 		huntTime(0),
 		verbose_overlay(false),
 		suppress_overlay(false),
+		gSelectedVertexBufferSlotId(-1),
+		gResetSelectedVertexBufferSlotId(false),
 
 		deferred_contexts_enabled(true),
 
