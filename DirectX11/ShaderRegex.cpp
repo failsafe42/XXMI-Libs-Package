@@ -718,7 +718,7 @@ bool get_shader_model_from_bytecode(const void* data, size_t size, std::string* 
 }
 
 // Process groups that do not have patches to apply. Those can be handled without disassembly.
-bool link_shader_regex_groups_without_patterns(const wchar_t* shader_type, std::string* shader_model, UINT64 hash, bool* decompilation_required)
+void link_shader_regex_groups_without_patterns(const wchar_t* shader_type, std::string* shader_model, UINT64 hash, bool* decompilation_required)
 {
 	ShaderRegexGroups::iterator i;
 	vector<uint32_t> match_ids;
