@@ -4526,13 +4526,19 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
-				false, &resource, NULL, NULL);
+				override_color_space == L"srgb", &resource, NULL, NULL);
 	} else {
+		DirectX::WIC_LOADER_FLAGS wicflags = DirectX::WIC_LOADER_FLAGS::WIC_LOADER_DEFAULT;
+		if(override_color_space == L"srgb"){
+			wicflags = DirectX::WIC_LOADER_FLAGS::WIC_LOADER_FORCE_SRGB;
+		}else if(override_color_space == L"linear"){
+			wicflags = DirectX::WIC_LOADER_FLAGS::WIC_LOADER_IGNORE_SRGB;
+		}
 		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
-				DirectX::WIC_LOADER_FLAGS::WIC_LOADER_FORCE_SRGB, &resource, NULL);
+				wicflags, &resource, NULL);
 	}
 	if (SUCCEEDED(hr)) {
 		device = mOrigDevice1;
@@ -4857,6 +4863,7 @@ CustomResource* CustomResourcePool::InitializeResource(size_t pool_index)
 
 	custom_resource->override_type = resource_template->override_type;
 	custom_resource->override_format = resource_template->override_format;
+	custom_resource->override_color_space = resource_template->override_color_space;
 	custom_resource->override_byte_width = resource_template->override_byte_width;
 	custom_resource->override_stride = resource_template->override_stride;
 	custom_resource->override_array = resource_template->override_array;

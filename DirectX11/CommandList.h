@@ -513,6 +513,7 @@ public:
 	CustomResourceBindFlags override_bind_flags;
 	ResourceMiscFlags override_misc_flags;
 	DXGI_FORMAT override_format;
+	wstring override_color_space;
 	int override_width;
 	int override_height;
 	int override_depth;
