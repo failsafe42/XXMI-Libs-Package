@@ -8,6 +8,7 @@
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <util.h>
+#include <WICTextureLoader.h>
 
 #include "DrawCallInfo.h"
 #include "ResourceHash.h"
@@ -546,6 +547,7 @@ public:
 	void expire(ID3D11Device *mOrigDevice1, ID3D11DeviceContext *mOrigContext1);
 
 private:
+	DirectX::WIC_LOADER_FLAGS GetWICFlags(wstring filename);
 	void LoadFromFile(ID3D11Device *mOrigDevice);
 	void LoadBufferFromFile(ID3D11Device *mOrigDevice);
 	void SubstantiateBuffer(ID3D11Device *mOrigDevice, void **buf, DWORD size);
