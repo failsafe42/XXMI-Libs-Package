@@ -1,11 +1,11 @@
 #include "ResourceHash.h"
 
-#include <INITGUID.h>
+#include <initguid.h>
 #include "log.h"
 #include "util.h"
 #include "globals.h"
 #include "profiling.h"
-#include "overlay.h"
+#include "Overlay.h"
 
 // DirectXTK headers fail to include their own pre-requisits. We just want
 // GetSurfaceInfo from LoaderHelpers

@@ -1,5 +1,5 @@
 #include "lock.h"
-#include "overlay.h"
+#include "Overlay.h"
 
 #include <psapi.h>
 #include <inttypes.h>

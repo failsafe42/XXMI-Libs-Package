@@ -3,7 +3,7 @@
 #include <sddl.h>
 #include <io.h>
 #include <fcntl.h>
-#include <Dbghelp.h>
+#include <dbghelp.h>
 #include <shellscalingapi.h>
 #include <chrono>
 

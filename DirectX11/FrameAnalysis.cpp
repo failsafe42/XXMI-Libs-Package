@@ -5,14 +5,14 @@
 
 #include "D3D11Wrapper.h"
 #include "FrameAnalysis.h"
-#include "Globals.h"
-#include "input.h"
+#include "globals.h"
+#include "Input.h"
 
 #include <ScreenGrab.h>
 #include <wincodec.h>
-#include <Strsafe.h>
+#include <strsafe.h>
 #include <stdarg.h>
-#include <Shlwapi.h>
+#include <shlwapi.h>
 
 #include <locale>
 

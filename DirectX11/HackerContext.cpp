@@ -15,7 +15,7 @@
 //#include "HookedContext.h"
 
 #include "log.h"
-#include "Globals.h"
+#include "globals.h"
 
 #include "HackerDevice.h"
 #include "D3D11Wrapper.h"

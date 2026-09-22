@@ -12,7 +12,7 @@
 #include "util.h"
 #include "DecompileHLSL.h"
 #include "Input.h"
-#include "Globals.h"
+#include "globals.h"
 #include "IniHandler.h"
 #include "D3D_Shaders\stdafx.h"
 #include "CommandList.h"

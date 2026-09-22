@@ -1,5 +1,5 @@
 #include "../util.h"
-//#include "Globals.h"
+//#include "globals.h"
 #include "IniHandler.h"
 #include "D3D11Wrapper.h"
 

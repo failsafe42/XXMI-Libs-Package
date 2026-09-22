@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d11_1.h>
-#include <INITGUID.h>
+#include <initguid.h>
 
 #include "DrawCallInfo.h"
 
@@ -9,7 +9,7 @@
 
 #include "HackerInputLayout.h"
 #include "HackerDevice.h"
-#include "Globals.h"
+#include "globals.h"
 
 // {A3046B1E-336B-4D90-9FD6-234BC09B8687}
 DEFINE_GUID(IID_HackerContext,

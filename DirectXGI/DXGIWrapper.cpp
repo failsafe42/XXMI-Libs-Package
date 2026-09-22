@@ -23,7 +23,7 @@
 //  in Windows directly load our d3d11.dll without any code or other requirements.
 
 
-#include <Windows.h>
+#include <windows.h>
 #include <stdio.h>
 #include <Shlobj.h>
 #include <dxgi1_2.h>

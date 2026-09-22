@@ -30,8 +30,8 @@ static EnumName_t<const wchar_t*, LogVerbosity> LogVerbosityNames[] = {
 	{NULL,        LogVerbosity::INVALID} // End of list marker
 };
 
-// Resolve circular include dependency between Globals.h ->
-// CommandList.h -> HackerContext.h -> Globals.h
+// Resolve circular include dependency between globals.h ->
+// CommandList.h -> HackerContext.h -> globals.h
 class CommandListCommand;
 class CommandList;
 

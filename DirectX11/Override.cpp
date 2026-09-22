@@ -1,6 +1,6 @@
 #include "Override.h"
 
-#include "Globals.h"
+#include "globals.h"
 #include "D3D11Wrapper.h"
 #include "IniHandler.h"
 

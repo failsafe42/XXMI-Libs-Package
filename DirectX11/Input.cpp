@@ -1,6 +1,6 @@
 #include "Input.h"
 
-#include <Xinput.h>
+#include <xinput.h>
 #include <vector>
 #include <algorithm>
 #include <sstream>

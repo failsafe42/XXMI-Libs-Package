@@ -11,7 +11,7 @@
 #include <codecvt>
 
 #include "log.h"
-#include "Globals.h"
+#include "globals.h"
 #include "Override.h"
 #include "Hunting.h"
 #include "ShaderRegex.h"

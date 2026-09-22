@@ -12,7 +12,7 @@
 #include "log.h"
 #include "version.h"
 #include "D3D11Wrapper.h"
-#include "Globals.h"
+#include "globals.h"
 #include "profiling.h"
 
 #include "HackerDevice.h"

@@ -22,7 +22,7 @@
 #define MAX_COMMAND_LIST_RECURSION 256
 
 // Forward declarations instead of #includes to resolve circular includes (we
-// include Hacker*.h, which includes Globals.h, which includes us):
+// include Hacker*.h, which includes globals.h, which includes us):
 class HackerDevice;
 class HackerContext;
 enum class FrameAnalysisOptions;

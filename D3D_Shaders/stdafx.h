@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <tchar.h>
 #include "stdint.h"
-#include "D3DCompiler.h"
+#include "d3dcompiler.h"
 #include <string>
 #include <vector>
 #include <unordered_map>

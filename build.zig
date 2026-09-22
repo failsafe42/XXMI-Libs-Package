@@ -256,7 +256,7 @@ pub fn build(b: *std.Build) void {
     d3d11_mod.addCSourceFiles(.{
         .root = b.path("."),
         .files = &.{"DirectX11/HookAddresses.c"},
-        .flags = &.{ "-Wno-format" },
+        .flags = &.{"-Wno-format"},
     });
     d3d11_mod.addWin32ResourceFile(.{
         .file = b.path("DirectX11/DirectX11.rc"),
@@ -269,7 +269,7 @@ pub fn build(b: *std.Build) void {
     d3d11_mod.linkLibrary(pcre2_lib);
     d3d11_mod.linkLibrary(directxtk_lib);
     d3d11_mod.linkLibrary(binarydecompiler_lib);
-    d3d11_mod.addLibraryPath(b.path(".pixi/envs/default/Library/lib/zig/libc/mingw/lib-common"));
+    d3d11_mod.addLibraryPath(b.path(".pixi/envs/default/lib/zig/libc/mingw/lib-common"));
     if (is_x64) {
         // NktHookLib64.lib is compiled with the MSVC C++ ABI; this shim provides
         // the Itanium-mangled names this module's sources reference and forwards
@@ -280,7 +280,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{"Nektra/NktHookLib_gnu_shim.cpp"},
             .flags = &.{ "-std=gnu++17", "-Wno-write-strings" },
         });
-        d3d11_mod.addLibraryPath(b.path(".pixi/envs/default/Library/lib/zig/libc/mingw/lib64"));
+        d3d11_mod.addLibraryPath(b.path(".pixi/envs/default/lib/zig/libc/mingw/lib64"));
     }
     d3d11_mod.addObjectFile(b.path(nektra_lib));
     const system_libs = [_][]const u8{
@@ -294,7 +294,7 @@ pub fn build(b: *std.Build) void {
         "user32",
         "shell32",
         "uuid",
-        "XINPUT9_1_0",
+        "xinput1_4",
         "d3dcompiler_47",
     };
     for (system_libs) |lib| d3d11_mod.linkSystemLibrary(lib, .{});

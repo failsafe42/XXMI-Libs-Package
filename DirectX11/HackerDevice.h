@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include <d3d11_1.h>
-#include <INITGUID.h>
+#include <initguid.h>
 
 #include "HackerContext.h"
 #include "HackerDXGI.h"

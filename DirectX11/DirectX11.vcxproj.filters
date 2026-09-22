@@ -37,7 +37,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D11Wrapper.h" />
-    <ClInclude Include="Globals.h" />
+    <ClInclude Include="globals.h" />
     <ClInclude Include="HackerContext.h" />
     <ClInclude Include="HackerDevice.h" />
     <ClInclude Include="Hunting.h" />

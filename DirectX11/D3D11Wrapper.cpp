@@ -1,7 +1,7 @@
 #include "D3D11Wrapper.h"
 
 #include "log.h"
-#include "Globals.h"
+#include "globals.h"
 #include "IniHandler.h"
 #include "HookedDXGI.h"
 

@@ -17,7 +17,7 @@
 #include "Hunting.h"
 #include "cursor.h"
 
-#include <D3DCompiler.h>
+#include <d3dcompiler.h>
 
 CustomResources customResources;
 CustomResourcePools customResourcePools;
