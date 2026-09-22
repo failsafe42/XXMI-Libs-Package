@@ -80,7 +80,7 @@ pub fn build(b: *std.Build) void {
         .default_target = .{ .os_tag = .windows, .abi = .gnu },
     });
     const optimize = b.standardOptimizeOption(.{
-        .preferred_optimize_mode = .ReleaseFast,
+        .preferred_optimize_mode = .ReleaseSmall,
     });
 
     const arch = target.result.cpu.arch;
@@ -266,10 +266,16 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    const builtin = @import("builtin");
+    const host_lib_dir = switch (builtin.os.tag) {
+        .windows => ".pixi/envs/default/Library/lib",
+        else => ".pixi/envs/default/lib",
+    };
+
     d3d11_mod.linkLibrary(pcre2_lib);
     d3d11_mod.linkLibrary(directxtk_lib);
     d3d11_mod.linkLibrary(binarydecompiler_lib);
-    d3d11_mod.addLibraryPath(b.path(".pixi/envs/default/lib/zig/libc/mingw/lib-common"));
+    d3d11_mod.addLibraryPath(b.path(host_lib_dir ++ "/zig/libc/mingw/lib-common"));
     if (is_x64) {
         // NktHookLib64.lib is compiled with the MSVC C++ ABI; this shim provides
         // the Itanium-mangled names this module's sources reference and forwards
@@ -280,7 +286,7 @@ pub fn build(b: *std.Build) void {
             .files = &.{"Nektra/NktHookLib_gnu_shim.cpp"},
             .flags = &.{ "-std=gnu++17", "-Wno-write-strings" },
         });
-        d3d11_mod.addLibraryPath(b.path(".pixi/envs/default/lib/zig/libc/mingw/lib64"));
+        d3d11_mod.addLibraryPath(b.path(host_lib_dir ++ "/zig/libc/mingw/lib64"));
     }
     d3d11_mod.addObjectFile(b.path(nektra_lib));
     const system_libs = [_][]const u8{
