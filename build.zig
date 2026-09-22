@@ -294,7 +294,7 @@ pub fn build(b: *std.Build) void {
         "user32",
         "shell32",
         "uuid",
-        "xinput1_4",
+        "xinput9_1_0",
         "d3dcompiler_47",
     };
     for (system_libs) |lib| d3d11_mod.linkSystemLibrary(lib, .{});
