@@ -92,7 +92,7 @@ static HRESULT InstallHookDLLMain(LPCWSTR moduleName, char *func, void **trampol
 
 static HRESULT HookLoadLibraryExW()
 {
-	HRESULT hr = InstallHookDLLMain(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, Hooked_LoadLibraryExW);
+	HRESULT hr = InstallHookDLLMain(L"Kernel32.dll", "LoadLibraryExW", (LPVOID*)&fnOrigLoadLibraryExW, (void*)Hooked_LoadLibraryExW);
 	if (FAILED(hr))
 		return E_FAIL;
 
@@ -116,16 +116,16 @@ static HRESULT HookDXGIFactories()
 {
 	HRESULT hr;
 
-	hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, Hooked_CreateDXGIFactory);
+	hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory", (LPVOID*)&fnOrigCreateDXGIFactory, (void*)Hooked_CreateDXGIFactory);
 	if (FAILED(hr))
 		return E_FAIL;
 
-	hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, Hooked_CreateDXGIFactory1);
+	hr = InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory1", (LPVOID*)&fnOrigCreateDXGIFactory1, (void*)Hooked_CreateDXGIFactory1);
 	if (FAILED(hr))
 		return E_FAIL;
 
 	// We do not care if this fails - this function does not exist on Win7
-	InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, Hooked_CreateDXGIFactory2);
+	InstallHookDLLMain(L"dxgi.dll", "CreateDXGIFactory2", (LPVOID*)&fnOrigCreateDXGIFactory2, (void*)Hooked_CreateDXGIFactory2);
 
 	return NOERROR;
 }
@@ -141,7 +141,7 @@ static HRESULT HookD3D11(HINSTANCE our_dll)
 	// should we defer the hook until later (perhaps our LoadLibrary hook)?
 
 	hr = InstallHookDLLMain(L"d3d11.dll", "D3D11CreateDevice",
-			(LPVOID*)&_D3D11CreateDevice, D3D11CreateDevice);
+			(LPVOID*)&_D3D11CreateDevice, (void*)D3D11CreateDevice);
 	if (FAILED(hr))
 		return E_FAIL;
 
@@ -151,7 +151,7 @@ static HRESULT HookD3D11(HINSTANCE our_dll)
 	// compatible, so just use GetProcAddress() rather than fight it.
 	hr = InstallHookDLLMain(L"d3d11.dll", "D3D11CreateDeviceAndSwapChain",
 			(LPVOID*)&_D3D11CreateDeviceAndSwapChain,
-			GetProcAddress(our_dll, "D3D11CreateDeviceAndSwapChain"));
+			(void*)GetProcAddress(our_dll, "D3D11CreateDeviceAndSwapChain"));
 	if (FAILED(hr))
 		return E_FAIL;
 
@@ -372,10 +372,10 @@ BOOL WINAPI DllMain(
 				// moment. On program termination (lpvReserved
 				// != NULL) we are not permitted to do that, so
 				// for now just release the TLS structure from
-				// the current thread (if allocated) and
-				// release the TLS index allocated for the DLL.
-				delete TlsGetValue(tls_idx);
-				TlsFree(tls_idx);
+// the current thread (if allocated) and
+			// release the TLS index allocated for the DLL.
+			delete (TLS*)TlsGetValue(tls_idx);
+			TlsFree(tls_idx);
 			}
 			DestroyDLL();
 			break;
@@ -392,7 +392,7 @@ BOOL WINAPI DllMain(
 
 		case DLL_THREAD_DETACH:
 			// Do thread-specific cleanup.
-			delete TlsGetValue(tls_idx);
+			delete (TLS*)TlsGetValue(tls_idx);
 			break;
 	}
 

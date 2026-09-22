@@ -149,7 +149,7 @@ static const wchar_t* SectionPrefixFromList(const wchar_t *section, Section sect
 		}
 	}
 
-	return false;
+	return NULL;
 }
 
 static const wchar_t* SectionPrefix(const wchar_t *section)
@@ -223,7 +223,7 @@ std::unordered_set<wstring> recursive_includes;
 // prefix in a case insensitive way. Combined with set::lower_bound, this can
 // be used to iterate over all elements in the sections set that begin with a
 // given prefix.
-static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &prefix)
+static IniSections::iterator prefix_upper_bound(IniSections &sections, const wstring &prefix)
 {
 	IniSections::iterator i;
 
@@ -241,11 +241,11 @@ static IniSections::iterator prefix_upper_bound(IniSections &sections, wstring &
 static bool ini_warned = false;
 #define IniWarning(fmt, ...) do { \
 	ini_warned = true; \
-	LogOverlay(LOG_WARNING, fmt, __VA_ARGS__); \
+	LogOverlay(LOG_WARNING, fmt, ##__VA_ARGS__); \
 } while (0)
 #define IniWarningW(fmt, ...) do { \
 	ini_warned = true; \
-	LogOverlayW(LOG_WARNING, fmt, __VA_ARGS__); \
+	LogOverlayW(LOG_WARNING, fmt, ##__VA_ARGS__); \
 } while (0)
 #define IniWarningBeep() do { \
 	ini_warned = true; \
@@ -258,11 +258,6 @@ static void emit_ini_warning_tone()
 	ini_warned = false;
 	if (G->gShowWarnings)
 		BeepFailure();
-}
-
-inline wchar_t ascii_tolower(wchar_t c)
-{
-	return (c >= L'A' && c <= L'Z') ? c + (L'a' - L'A') : c;
 }
 
 static bool get_namespaced_section_name(const wstring *section, const wstring *ini_namespace, wstring *ret)
@@ -658,7 +653,7 @@ static void ParseIniExcerpt(const wchar_t *excerpt)
 // it, make sure you delay calling it until after the log file has been opened!
 static void ParseNamespacedIniFile(const wchar_t *ini, const wstring *ini_namespace)
 {
-	wifstream f(ini, ios::in, _SH_DENYNO);
+	wifstream f(ini, ios::in);
 	if (!f) {
 		LogOverlay(LOG_WARNING, "  Error opening %S\n", ini);
 		return;
@@ -728,7 +723,7 @@ static pcre2_code* glob_to_regex(wstring &pattern)
 	return regex;
 }
 
-static vector<pcre2_code*> globbing_vector_to_regex(vector<wstring> &globbing_patterns)
+static vector<pcre2_code*> globbing_vector_to_regex(const vector<wstring> &globbing_patterns)
 {
 	vector<pcre2_code*> ret;
 	pcre2_code *regex;
@@ -1453,6 +1448,18 @@ template TransitionType GetIniEnumClass<const char *, TransitionType>(const wcha
 		struct EnumName_t<const char *, TransitionType> *enum_names);
 template MarkingMode GetIniEnumClass<const wchar_t *, MarkingMode>(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found,
 		struct EnumName_t<const wchar_t *, MarkingMode> *enum_names);
+
+// Concrete wrapper for the only cross-TU caller of GetIniEnumClass (see
+// ini handler declarations to understand why this exists).
+MarkingMode GetIniMarkingModeFromIni(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found)
+{
+	return GetIniEnumClass<const wchar_t *, MarkingMode>(section, key, def, found, MarkingModeNames);
+}
+
+TransitionType GetIniTransitionTypeFromIni(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found)
+{
+	return GetIniEnumClass<const char *, TransitionType>(section, key, def, found, TransitionTypeNames);
+}
 
 // For options that used to be booleans and are now integers. Boolean values
 // (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for backwards
@@ -2670,7 +2677,7 @@ static std::vector<std::string> split_string(const std::string *str, char sep)
 }
 
 template <typename T>
-static std::set<T> vec_to_set(std::vector<T> &v)
+static std::set<T> vec_to_set(const std::vector<T> &v)
 {
 	return std::set<T>(v.begin(), v.end());
 }

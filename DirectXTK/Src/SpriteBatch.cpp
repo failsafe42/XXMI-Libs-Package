@@ -62,7 +62,7 @@ namespace
 
 
 // Internal SpriteBatch implementation class.
-__declspec(align(16)) class SpriteBatch::Impl : public AlignedNew<SpriteBatch::Impl>
+class __attribute__((aligned(16))) SpriteBatch::Impl : public AlignedNew<SpriteBatch::Impl>
 {
 public:
     Impl(_In_ ID3D11DeviceContext* deviceContext);
@@ -85,7 +85,7 @@ public:
 
 
     // Info about a single sprite that is waiting to be drawn.
-    __declspec(align(16)) struct SpriteInfo : public AlignedNew<SpriteInfo>
+    struct __attribute__((aligned(16))) SpriteInfo : public AlignedNew<SpriteInfo>
     {
         XMFLOAT4A source;
         XMFLOAT4A destination;
@@ -222,6 +222,11 @@ private:
 // Global pools of per-device and per-context SpriteBatch resources.
 SharedResourcePool<ID3D11Device*, SpriteBatch::Impl::DeviceResources> SpriteBatch::Impl::deviceResourcesPool;
 SharedResourcePool<ID3D11DeviceContext*, SpriteBatch::Impl::ContextResources> SpriteBatch::Impl::contextResourcesPool;
+
+// Out-of-line definitions for the static const members of Impl (C++17
+// requires these to exist when the members are odr-used).
+const size_t SpriteBatch::Impl::MaxBatchSize;
+const size_t SpriteBatch::Impl::InitialQueueSize;
 
 
 // Constants.
@@ -396,7 +401,7 @@ void XM_CALLCONV SpriteBatch::Impl::Begin(SpriteSortMode sortMode,
     FXMMATRIX transformMatrix)
 {
     if (mInBeginEndPair)
-        throw std::exception("Cannot nest Begin calls on a single SpriteBatch");
+        throw std::runtime_error("Cannot nest Begin calls on a single SpriteBatch");
 
     mSortMode = sortMode;
     mBlendState = blendState;
@@ -410,7 +415,7 @@ void XM_CALLCONV SpriteBatch::Impl::Begin(SpriteSortMode sortMode,
     {
         // If we are in immediate mode, set device state ready for drawing.
         if (mContextResources->inImmediateMode)
-            throw std::exception("Only one SpriteBatch at a time can use SpriteSortMode_Immediate");
+            throw std::runtime_error("Only one SpriteBatch at a time can use SpriteSortMode_Immediate");
 
         PrepareForRendering();
 
@@ -425,7 +430,7 @@ void XM_CALLCONV SpriteBatch::Impl::Begin(SpriteSortMode sortMode,
 void SpriteBatch::Impl::End()
 {
     if (!mInBeginEndPair)
-        throw std::exception("Begin must be called before End");
+        throw std::runtime_error("Begin must be called before End");
 
     if (mSortMode == SpriteSortMode_Immediate)
     {
@@ -436,7 +441,7 @@ void SpriteBatch::Impl::End()
     {
         // Draw the queued sprites now.
         if (mContextResources->inImmediateMode)
-            throw std::exception("Cannot end one SpriteBatch while another is using SpriteSortMode_Immediate");
+            throw std::runtime_error("Cannot end one SpriteBatch while another is using SpriteSortMode_Immediate");
 
         PrepareForRendering();
         FlushBatch();
@@ -460,10 +465,10 @@ void XM_CALLCONV SpriteBatch::Impl::Draw(ID3D11ShaderResourceView* texture,
     int flags)
 {
     if (!texture)
-        throw std::exception("Texture cannot be null");
+        throw std::runtime_error("Texture cannot be null");
 
     if (!mInBeginEndPair)
-        throw std::exception("Begin must be called before Draw");
+        throw std::runtime_error("Begin must be called before Draw");
 
     // Get a pointer to the output sprite.
     if (mSpriteQueueCount >= mSpriteQueueArraySize)
@@ -934,7 +939,7 @@ XMVECTOR SpriteBatch::Impl::GetTextureSize(_In_ ID3D11ShaderResourceView* textur
     
     if (FAILED(resource.As(&texture2D)))
     {
-        throw std::exception("SpriteBatch can only draw Texture2D resources");
+        throw std::runtime_error("SpriteBatch can only draw Texture2D resources");
     }
 
     // Query the texture size.
@@ -961,7 +966,7 @@ XMMATRIX SpriteBatch::Impl::GetViewportTransform(_In_ ID3D11DeviceContext* devic
         deviceContext->RSGetViewports(&viewportCount, &mViewPort);
 
         if (viewportCount != 1)
-            throw std::exception("No viewport is set");
+            throw std::runtime_error("No viewport is set");
     }
     
     // Compute the matrix.

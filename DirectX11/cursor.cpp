@@ -343,15 +343,15 @@ void InstallMouseHooks(bool hide)
 		SetCursor(InvisibleCursor());
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	fail |= InstallHookLate(hUser32, "SetCursor", (void**)&trampoline_SetCursor, Hooked_SetCursor);
-	fail |= InstallHookLate(hUser32, "GetCursor", (void**)&trampoline_GetCursor, Hooked_GetCursor);
-	fail |= InstallHookLate(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, Hooked_GetCursorInfo);
-	fail |= InstallHookLate(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, Hooked_DefWindowProcA);
-	fail |= InstallHookLate(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, Hooked_DefWindowProcW);
-	fail |= InstallHookLate(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, Hooked_SetCursorPos);
-	fail |= InstallHookLate(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, Hooked_GetCursorPos);
-	fail |= InstallHookLate(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, Hooked_ScreenToClient);
-	fail |= InstallHookLate(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, Hooked_GetClientRect);
+	fail |= InstallHookLate(hUser32, "SetCursor", (void**)&trampoline_SetCursor, (void*)Hooked_SetCursor);
+	fail |= InstallHookLate(hUser32, "GetCursor", (void**)&trampoline_GetCursor, (void*)Hooked_GetCursor);
+	fail |= InstallHookLate(hUser32, "GetCursorInfo", (void**)&trampoline_GetCursorInfo, (void*)Hooked_GetCursorInfo);
+	fail |= InstallHookLate(hUser32, "DefWindowProcA", (void**)&trampoline_DefWindowProcA, (void*)Hooked_DefWindowProcA);
+	fail |= InstallHookLate(hUser32, "DefWindowProcW", (void**)&trampoline_DefWindowProcW, (void*)Hooked_DefWindowProcW);
+	fail |= InstallHookLate(hUser32, "SetCursorPos", (void**)&trampoline_SetCursorPos, (void*)Hooked_SetCursorPos);
+	fail |= InstallHookLate(hUser32, "GetCursorPos", (void**)&trampoline_GetCursorPos, (void*)Hooked_GetCursorPos);
+	fail |= InstallHookLate(hUser32, "ScreenToClient", (void**)&trampoline_ScreenToClient, (void*)Hooked_ScreenToClient);
+	fail |= InstallHookLate(hUser32, "GetClientRect", (void**)&trampoline_GetClientRect, (void*)Hooked_GetClientRect);
 
 	if (fail) {
 		LogOverlay(LOG_DIRE, "Failed to hook mouse cursor functions - hide_cursor will not work\n");

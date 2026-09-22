@@ -93,6 +93,7 @@
 #include <algorithm>
 #include <array>
 #include <exception>
+#include <stdexcept>
 #include <list>
 #include <map>
 #include <memory>

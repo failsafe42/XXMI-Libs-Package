@@ -97,10 +97,10 @@ static void dump_stack_trace()
 		if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)trace[i], &module)
 		 && GetModuleFileName(module, path, MAX_PATH)
 		 && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-			LogInfo("%04x: %S+0x%"PRIxPTR"\n",
+			LogInfo("%04x: %S+0x%" PRIxPTR"\n",
 					GetCurrentThreadId(), path, trace[i] - (uintptr_t)mod_info.lpBaseOfDll);
 		} else {
-			LogInfo("%04x: 0x%"PRIxPTR"\n",
+			LogInfo("%04x: 0x%" PRIxPTR"\n",
 					GetCurrentThreadId(), trace[i]);
 		}
 	}
@@ -123,10 +123,10 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
 			if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
 			 && GetModuleFileName(module, path, MAX_PATH)
 			 && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-				LogInfo("%04x: EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+				LogInfo("%04x: EnterCriticalSection(%s) %S+0x%" PRIxPTR"\n",
 						GetCurrentThreadId(), lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
 			} else {
-				LogInfo("%04x: EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+				LogInfo("%04x: EnterCriticalSection(%s) 0x%" PRIxPTR"\n",
 						GetCurrentThreadId(), lock_name(info->lock, buf), info->ret);
 			}
 		}
@@ -145,10 +145,10 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
 				if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
 				 && GetModuleFileName(module, path, MAX_PATH)
 				 && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-					LogInfo("      EnterCriticalSection(%s) %S+0x%"PRIxPTR"\n",
+					LogInfo("      EnterCriticalSection(%s) %S+0x%" PRIxPTR"\n",
 							lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
 				} else {
-					LogInfo("      EnterCriticalSection(%s) 0x%"PRIxPTR"\n",
+					LogInfo("      EnterCriticalSection(%s) 0x%" PRIxPTR"\n",
 							lock_name(info->lock, buf), info->ret);
 				}
 			}
@@ -227,6 +227,7 @@ static void validate_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock)
 
 	// Check if any of the currently held locks appear in the new lock's
 	// after list, indicating an AB-BA deadlock scenario.
+	{
 	auto &new_lock_after = lock_graph[new_lock];
 	for (auto info = locks_held.begin(); info < locks_held.end() - 1; info++) {
 		// Add the newly taken lock to each currently held lock's after
@@ -244,6 +245,7 @@ static void validate_lock(LockStack &locks_held, CRITICAL_SECTION *new_lock)
 				overlay_reported.insert({new_lock, info->lock});
 			}
 		}
+	}
 	}
 
 	// Take note of a hash identifying the current lock stack so we can
@@ -510,10 +512,10 @@ void enable_lock_dependency_checks()
 	// Deviare will itself take locks while we are hooking, so protect against re-entrancy:
 	get_tls()->hooking_quirk_protection = true;
 
-	cHookMgr.Hook(&hook_id, (void**)&_LeaveCriticalSection, LeaveCriticalSection, LeaveCriticalSectionHook);
-	cHookMgr.Hook(&hook_id, (void**)&_EnterCriticalSection, EnterCriticalSection, EnterCriticalSectionHook);
-	cHookMgr.Hook(&hook_id, (void**)&_TryEnterCriticalSection, TryEnterCriticalSection, TryEnterCriticalSectionHook);
-	cHookMgr.Hook(&hook_id, (void**)&_DeleteCriticalSection, DeleteCriticalSection, DeleteCriticalSectionHook);
+	cHookMgr.Hook(&hook_id, (void**)&_LeaveCriticalSection, (void*)LeaveCriticalSection, (void*)LeaveCriticalSectionHook);
+	cHookMgr.Hook(&hook_id, (void**)&_EnterCriticalSection, (void*)EnterCriticalSection, (void*)EnterCriticalSectionHook);
+	cHookMgr.Hook(&hook_id, (void**)&_TryEnterCriticalSection, (void*)TryEnterCriticalSection, (void*)TryEnterCriticalSectionHook);
+	cHookMgr.Hook(&hook_id, (void**)&_DeleteCriticalSection, (void*)DeleteCriticalSection, (void*)DeleteCriticalSectionHook);
 
 	get_tls()->hooking_quirk_protection = false;
 }

@@ -2,7 +2,7 @@
 
 #include <string>
 #include <sstream>
-#include <D3Dcompiler.h>
+#include <d3dcompiler.h>
 #include <codecvt>
 
 #include "ScreenGrab.h"
@@ -482,7 +482,7 @@ err_free:
 STDMETHODIMP MigotoIncludeHandler::Close(LPCVOID pData)
 {
 	LogDebug("      MigotoIncludeHandler::Close(%p, %p)\n", this, pData);
-	delete [] pData;
+	delete [] (BYTE*)pData;
 	dir_stack.pop_back();
 	return S_OK;
 }
@@ -602,7 +602,7 @@ static bool RegenerateShader(wchar_t *shaderFixPath, wchar_t *fileName, const ch
 		LogInfo("    assembling replacement ASM code with shader model %s\n", shaderModel);
 
 		// We need original byte code unchanged, so make a copy.
-		vector<byte> byteCode(origByteCode->GetBufferSize());
+		vector<BYTE> byteCode(origByteCode->GetBufferSize());
 		memcpy(byteCode.data(), origByteCode->GetBufferPointer(), origByteCode->GetBufferSize());
 
 		try
@@ -704,7 +704,7 @@ static bool ReloadShader(wchar_t *shaderPath, wchar_t *fileName, HackerDevice *d
 	// This needs to use the value to find the key, so a linear search.
 	// It's notable that the map can contain multiple copies of the same hash, used for different visual
 	// items, but with same original code.  We need to update all copies.
-	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+	for (auto iter : G->mReloadedShaders)
 	{
 		if (iter.second.hash == hash)
 		{
@@ -1010,7 +1010,7 @@ static void CopyToFixes(UINT64 hash, HackerDevice *device)
 	string asmText, hlslText, errText;
 
 	// The key of the map is the actual shader, we thus need to do a linear search to find our marked hash.
-	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> iter in G->mReloadedShaders)
+	for (auto iter : G->mReloadedShaders)
 	{
 		if (iter.second.hash == hash)
 		{
@@ -1350,8 +1350,8 @@ static void HuntNext(char *type, std::set<ItemType> *visited,
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
 	{
-		std::set<ItemType>::iterator loc = visited->find(*selected);
-		std::set<ItemType>::iterator end = visited->end();
+		typename std::set<ItemType>::iterator loc = visited->find(*selected);
+		typename std::set<ItemType>::iterator end = visited->end();
 		bool found = (loc != end);
 		int size = (int) visited->size();
 
@@ -1477,9 +1477,9 @@ static void HuntPrev(char *type, std::set<ItemType> *visited,
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
 	{
-		std::set<ItemType>::iterator loc = visited->find(*selected);
-		std::set<ItemType>::iterator end = visited->end();
-		std::set<ItemType>::iterator front = visited->begin();
+		typename std::set<ItemType>::iterator loc = visited->find(*selected);
+		typename std::set<ItemType>::iterator end = visited->end();
+		typename std::set<ItemType>::iterator front = visited->begin();
 		bool found = (loc != end);
 		int size = (int) visited->size();
 
@@ -1996,7 +1996,7 @@ void ParseHuntingSection()
 	// For a better user experience we avoid resetting the marking mode on
 	// config reload if the next_marking_mode key is enabled, unless
 	// marking_mode was actually changed since the last config reload:
-	new_marking_mode = GetIniEnumClass(L"Hunting", L"marking_mode", MarkingMode::INVALID, NULL, MarkingModeNames);
+	new_marking_mode = GetIniMarkingModeFromIni(L"Hunting", L"marking_mode", MarkingMode::INVALID, NULL);
 	if (new_marking_mode != prev_marking_mode)
 		G->marking_mode = prev_marking_mode = new_marking_mode;
 	RegisterIniKeyBinding(L"Hunting", L"next_marking_mode", NextMarkingMode, NULL, noRepeat, NULL);

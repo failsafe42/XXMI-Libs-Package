@@ -33,7 +33,12 @@ public:
 
 	Notices()
 	{
-		InitializeCriticalSectionPretty(&lock);
+		// Do NOT use InitializeCriticalSectionPretty here: it records the
+		// lock in lock_names, an unordered_map whose construction order
+		// relative to this global constructor is undefined, and this DLL is
+		// loaded into processes where this static may not have been built
+		// yet. See the warning in lock.cpp's _InitializeCriticalSectionPretty.
+		InitializeCriticalSection(&lock);
 	}
 
 	~Notices()
@@ -488,7 +493,7 @@ HRESULT Overlay::InitDrawState()
 	backbuffer->Release();
 
 	// Make sure there is at least one open viewport for DirectXTK to use.
-	D3D11_VIEWPORT openView = CD3D11_VIEWPORT(0.0, 0.0, float(mResolution.x), float(mResolution.y));
+	D3D11_VIEWPORT openView = {0.0f, 0.0f, float(mResolution.x), float(mResolution.y), 0.0f, 1.0f};
 	mOrigContext->RSSetViewports(1, &openView);
 
 	return S_OK;
@@ -594,7 +599,7 @@ static void CreateShaderCountString(wchar_t *counts)
 
 static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
 {
-	for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
+	for (auto loaded : G->mReloadedShaders)
 	{
 		if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
 		{
@@ -689,7 +694,7 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bo
 	strSize = mFont->MeasureString(osdString);
 
 	if (!G->verbose_overlay)
-		x = max(float(mResolution.x - strSize.x) / 2, 0);
+		x = max(float(mResolution.x - strSize.x) / 2, 0.0f);
 
 	textPosition = Vector2(x, *y);
 	*y += strSize.y;

@@ -29,7 +29,7 @@ BinaryReader::BinaryReader(_In_z_ wchar_t const* fileName) :
     if ( FAILED(hr) )
     {
         DebugTrace( "BinaryReader failed (%08X) to load '%ls'\n", hr, fileName );
-        throw std::exception( "BinaryReader" );
+        throw std::runtime_error( "BinaryReader" );
     }
 
     mPos = mOwnedData.get();

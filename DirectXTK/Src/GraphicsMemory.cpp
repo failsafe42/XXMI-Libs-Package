@@ -45,7 +45,7 @@ public:
     {
         if (s_graphicsMemory)
         {
-            throw std::exception("GraphicsMemory is a singleton");
+            throw std::runtime_error("GraphicsMemory is a singleton");
         }
 
         s_graphicsMemory = this;
@@ -235,7 +235,7 @@ public:
     {
         if (s_graphicsMemory)
         {
-            throw std::exception("GraphicsMemory is a singleton");
+            throw std::runtime_error("GraphicsMemory is a singleton");
         }
 
         s_graphicsMemory = this;
@@ -328,7 +328,7 @@ void GraphicsMemory::Commit()
 GraphicsMemory& GraphicsMemory::Get()
 {
     if (!Impl::s_graphicsMemory || !Impl::s_graphicsMemory->mOwner)
-        throw std::exception("GraphicsMemory singleton not created");
+        throw std::runtime_error("GraphicsMemory singleton not created");
 
     return *Impl::s_graphicsMemory->mOwner;
 }

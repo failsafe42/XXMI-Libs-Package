@@ -160,7 +160,7 @@ PrimitiveBatchBase::Impl::Impl(_In_ ID3D11DeviceContext* deviceContext, size_t m
 void PrimitiveBatchBase::Impl::Begin()
 {
     if (mInBeginEndPair)
-        throw std::exception("Cannot nest Begin calls");
+        throw std::runtime_error("Cannot nest Begin calls");
 
 #if defined(_XBOX_ONE) && defined(_TITLE)
     mDeviceContext->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
@@ -194,7 +194,7 @@ void PrimitiveBatchBase::Impl::Begin()
 void PrimitiveBatchBase::Impl::End()
 {
     if (!mInBeginEndPair)
-        throw std::exception("Begin must be called before End");
+        throw std::runtime_error("Begin must be called before End");
 
     FlushBatch();
 
@@ -246,16 +246,16 @@ _Use_decl_annotations_
 void PrimitiveBatchBase::Impl::Draw(D3D11_PRIMITIVE_TOPOLOGY topology, bool isIndexed, uint16_t const* indices, size_t indexCount, size_t vertexCount, void** pMappedVertices)
 {
     if (isIndexed && !indices)
-        throw std::exception("Indices cannot be null");
+        throw std::runtime_error("Indices cannot be null");
 
     if (indexCount >= mMaxIndices)
-        throw std::exception("Too many indices");
+        throw std::runtime_error("Too many indices");
 
     if (vertexCount >= mMaxVertices)
-        throw std::exception("Too many vertices");
+        throw std::runtime_error("Too many vertices");
 
     if (!mInBeginEndPair)
-        throw std::exception("Begin must be called before Draw");
+        throw std::runtime_error("Begin must be called before Draw");
 
     // Can we merge this primitive in with an existing batch, or must we flush first?
     bool wrapIndexBuffer = (mCurrentIndex + indexCount > mMaxIndices);

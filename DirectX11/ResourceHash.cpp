@@ -535,7 +535,7 @@ static size_t Texture1DLength(
 {
 	// At the moment we are only using the first mip-map level, but this
 	// should work if we wanted to use another:
-	UINT mip_width = max(pDesc->Width >> level, 1);
+	UINT mip_width = max(pDesc->Width >> level, (UINT)1);
 
 	// For Texture1Ds we can't use the row pitch, so we have to calculate
 	// the size ourselves based on the format size and mip-map width. This
@@ -561,8 +561,8 @@ static size_t Texture2DLength(
 
 	// At the moment we are only using the first mip-map level, but this
 	// should work if we wanted to use another:
-	UINT mip_width = max(pDesc->Width >> level, 1);
-	UINT mip_height = max(pDesc->Height >> level, 1);
+	UINT mip_width = max(pDesc->Width >> level, (UINT)1);
+	UINT mip_height = max(pDesc->Height >> level, (UINT)1);
 
 	block_size = CompressedFormatBlockSize(pDesc->Format);
 
@@ -592,9 +592,9 @@ static size_t Texture3DLength(
 
 	// At the moment we are only using the first mip-map level, but this
 	// should work if we wanted to use another:
-	UINT mip_width = max(pDesc->Width >> level, 1);
-	UINT mip_height = max(pDesc->Height >> level, 1);
-	UINT mip_depth = max(pDesc->Depth >> level, 1);
+	UINT mip_width = max(pDesc->Width >> level, (UINT)1);
+	UINT mip_height = max(pDesc->Height >> level, (UINT)1);
+	UINT mip_depth = max(pDesc->Depth >> level, (UINT)1);
 
 	block_size = CompressedFormatBlockSize(pDesc->Format);
 
@@ -656,7 +656,7 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 	DirectX::LoaderHelpers::GetSurfaceInfo(pDesc->Width, pDesc->Height, pDesc->Format, &slice_pitch, &row_pitch, &row_count);
 
 	uint8_t *sptr = (uint8_t*)data;
-	size_t msize = min(row_pitch, mapped_row_pitch);
+	size_t msize = min(row_pitch, (size_t)mapped_row_pitch);
 
 	signed padding = (signed)mapped_row_pitch - (signed)row_pitch;
 	uint8_t *zeroes = NULL;
@@ -667,7 +667,7 @@ static uint32_t hash_tex2d_data(uint32_t hash, const void *data, size_t length,
 
 	signed remaining = (signed)length;
 	for (size_t h = 0; h < row_count && remaining > 0; h++) {
-		hash = crc32c_hw(hash, sptr, min(msize, (unsigned)remaining));
+		hash = crc32c_hw(hash, sptr, min(msize, (size_t)remaining));
 		sptr += mapped_row_pitch;
 		remaining -= (signed)msize;
 
@@ -949,21 +949,21 @@ static bool GetResourceInfoFields(struct ResourceHashInfo *info, UINT subresourc
 	UINT mips;
 	switch (info->type) {
 		case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-			mips = max(info->tex2d_desc.MipLevels, 1);
+			mips = max(info->tex2d_desc.MipLevels, (UINT)1);
 			*idx = subresource / mips;
 			*mip = subresource % mips;
-			*width = max(info->tex2d_desc.Width >> *mip, 1);
-			*height = max(info->tex2d_desc.Height >> *mip, 1);
+			*width = max(info->tex2d_desc.Width >> *mip, (UINT)1);
+			*height = max(info->tex2d_desc.Height >> *mip, (UINT)1);
 			*depth = 1;
 			*array_size = info->tex2d_desc.ArraySize;
 			return true;
 		case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-			mips = max(info->tex3d_desc.MipLevels, 1);
+			mips = max(info->tex3d_desc.MipLevels, (UINT)1);
 			*idx = subresource / mips;
 			*mip = subresource % mips;
-			*width = max(info->tex3d_desc.Width >> *mip, 1);
-			*height = max(info->tex3d_desc.Height >> *mip, 1);
-			*depth = max(info->tex3d_desc.Depth >> *mip, 1);
+			*width = max(info->tex3d_desc.Width >> *mip, (UINT)1);
+			*height = max(info->tex3d_desc.Height >> *mip, (UINT)1);
+			*depth = max(info->tex3d_desc.Depth >> *mip, (UINT)1);
 			*array_size = 1;
 			return true;
 	}
@@ -2044,7 +2044,7 @@ void RegionHashesCache::Invalidate(UINT start, UINT end)
 		return;
 
 	UINT end_page = (end - 1) / PAGE_SIZE;
-	end_page = min(end_page, page_versions.size() - 1);
+	end_page = min(end_page, (UINT)(page_versions.size() - 1));
 
 	if (start_page > end_page)
 		return;
@@ -2583,7 +2583,7 @@ uint32_t GetSpatialHash(HackerContext* context, ID3D11Buffer* buffer, UINT offse
 	}
 
 	// Calculate the minimal buffer size required to fit requested X Y Z offsets.
-	UINT min_buffer_size = max(offset_x, offset_y, offset_z) * 4 + 4;
+	UINT min_buffer_size = max(max(offset_x, offset_y), offset_z) * 4 + 4;
 
 	// Ensure upper bound does not exceed buffer size.
 	if (min_buffer_size >= handle_info->cached_data_size) {

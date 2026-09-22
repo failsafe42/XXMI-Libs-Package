@@ -117,7 +117,7 @@ void InstallSetWindowPosHook()
 		return;
 
 	hUser32 = NktHookLibHelpers::GetModuleBaseAddress(L"User32.dll");
-	fail |= InstallHookLate(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, Hooked_SetWindowPos);
+	fail |= InstallHookLate(hUser32, "SetWindowPos", (void**)&fnOrigSetWindowPos, (void*)Hooked_SetWindowPos);
 
 	if (fail) {
 		LogOverlay(LOG_DIRE, "Failed to hook SetWindowPos for full_screen=2\n");

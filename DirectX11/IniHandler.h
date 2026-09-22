@@ -74,9 +74,18 @@ template <class T1, class T2>
 T2 GetIniEnumClass(const wchar_t *section, const wchar_t *key, T2 def, bool *found,
 		struct EnumName_t<T1, T2> *enum_names);
 
+enum class MarkingMode;
+enum class TransitionType;
+
+MarkingMode GetIniMarkingModeFromIni(const wchar_t *section, const wchar_t *key, MarkingMode def, bool *found);
+TransitionType GetIniTransitionTypeFromIni(const wchar_t *section, const wchar_t *key, TransitionType def, bool *found);
+
 bool ParseBinaryLiterals(const wstring& input, size_t start, uint64_t& out, size_t& length);
 
-inline wchar_t ascii_tolower(wchar_t c);
+inline wchar_t ascii_tolower(wchar_t c)
+{
+	return (c >= L'A' && c <= L'Z') ? c + (L'a' - L'A') : c;
+}
 bool get_namespaced_section_name_lower(const wstring *section, const wstring *ini_namespace, wstring *ret);
 bool get_section_namespace(const wchar_t *section, wstring *ret);
 wstring get_namespaced_var_name_lower(const wstring& low_name, const wstring* ini_namespace);

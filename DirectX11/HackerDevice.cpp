@@ -16,7 +16,7 @@
 #include "HookedDevice.h"
 #include "FrameAnalysis.h"
 
-#include <D3Dcompiler.h>
+#include <d3dcompiler.h>
 #include <codecvt>
 
 #include "log.h"
@@ -884,7 +884,7 @@ static bool ReplaceASMShader(__in UINT64 hash, const wchar_t *pShaderType, const
 			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> utf8_to_utf16;
 			pHeaderLine = utf8_to_utf16.from_bytes(asmTextBytes.data(), strchr(asmTextBytes.data(), '\n'));
 
-			vector<byte> byteCode(pBytecodeLength);
+			vector<BYTE> byteCode(pBytecodeLength);
 			memcpy(byteCode.data(), pShaderBytecode, pBytecodeLength);
 
 			// Re-assemble the ASM text back to binary

@@ -37,7 +37,7 @@ std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
 // macro instead of a function for this to concatenate static strings:
 #define COMMAND_LIST_LOG(state, fmt, ...) \
 	do { \
-		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion + state->extra_indent, "", __VA_ARGS__); \
+		(state)->mHackerContext->FrameAnalysisLog("3DMigoto%*s " fmt, state->recursion + state->extra_indent, "", ##__VA_ARGS__); \
 	} while (0)
 
 
@@ -2366,11 +2366,13 @@ bool CustomShader::compile(char type, wchar_t *filename, const wstring *wname, c
 	// XXX: If we allow the compilation to be customised further (e.g. with
 	// addition preprocessor defines), make the cache filename unique for
 	// each possible combination
-	wchar_t *ext = wcsrchr(wpath, L'.');
-	if (ext > wcsrchr(wpath, L'\\'))
-		swprintf_s(cache_path, MAX_PATH, L"%.*s.%S.%x.bin", (int)(ext - wpath), wpath, shaderModel, (UINT)compile_flags);
-	else
-		swprintf_s(cache_path, MAX_PATH, L"%s.%S.%x.bin", wpath, shaderModel, (UINT)compile_flags);
+	{
+		wchar_t *ext = wcsrchr(wpath, L'.');
+		if (ext > wcsrchr(wpath, L'\\'))
+			swprintf_s(cache_path, MAX_PATH, L"%.*s.%S.%x.bin", (int)(ext - wpath), wpath, shaderModel, (UINT)compile_flags);
+		else
+			swprintf_s(cache_path, MAX_PATH, L"%s.%S.%x.bin", wpath, shaderModel, (UINT)compile_flags);
+	}
 
 	GetFileTime(f, NULL, NULL, &timestamp);
 	if (load_cached_shader(timestamp, cache_path, ppBytecode)) {
@@ -3392,14 +3394,14 @@ static void _CreateTextureFromBitmap(HDC dc, BITMAP *bitmap_obj,
 		goto err_release_tex;
 	}
 
-	delete [] data.pSysMem;
+	delete [] (BYTE*)data.pSysMem;
 
 	return;
 err_release_tex:
 	(*tex)->Release();
 	*tex = NULL;
 err_free:
-	delete [] data.pSysMem;
+	delete [] (BYTE*)data.pSysMem;
 }
 
 static void CreateTextureFromBitmap(HDC dc, HBITMAP hbitmap, CommandListState *state,
@@ -4772,6 +4774,15 @@ static void tokenise(const wstring* expression, CommandListSyntaxTree* tree, con
 
 		operand = make_shared<CommandListOperand>(friendly_pos, token);
 
+		// Token-prefix and token-length scratch shared by the Numeric / Variable /
+		// Other Tokens branches below.  Declared at the top of the loop so the
+		// various `goto import_operand` (which jump over this code) do not bypass
+		// variable initializations (clang rejects those jumps):
+		bool has_variable_prefix = remain[0] == L'$';
+		bool has_prefix = has_variable_prefix || remain[0] == L'@' || remain[0] == L'#';
+		size_t len = 0;
+		size_t len_target = 0;
+
 		// Numeric Literal
 		if (std::isdigit(remain[0]) || remain[0] == L'.')
 		{
@@ -4791,8 +4802,6 @@ static void tokenise(const wstring* expression, CommandListSyntaxTree* tree, con
 
 			throw CommandListSyntaxError(L"Float not recognized: " + remain, friendly_pos);
 		}
-
-		bool has_variable_prefix = remain[0] == L'$';
 
 		// Variable
 		if (has_variable_prefix)
@@ -4835,10 +4844,6 @@ static void tokenise(const wstring* expression, CommandListSyntaxTree* tree, con
 
 			throw CommandListSyntaxError(L"Variable not recognized: " + remain, friendly_pos);
 		}
-
-		bool has_prefix = has_variable_prefix || remain[0] == L'@' || remain[0] == L'#';
-
-		size_t len = 0;
 
 		// Other Tokens
 		if (!has_prefix)
@@ -4898,7 +4903,7 @@ static void tokenise(const wstring* expression, CommandListSyntaxTree* tree, con
 		
 		// More loose match with hyphens, brackets and UTF-8.
 		// Allows strings like `Pool\path like\namespace\chars_UTF-8[$index]->Call($PoolFoo[$index], 1)`.
-		size_t len_target = FindResourceCopyTargetTokenEnd(remain, has_prefix ? 1 : 0);
+		len_target = FindResourceCopyTargetTokenEnd(remain, has_prefix ? 1 : 0);
 		if (len_target)
 		{
 			token = remain.substr(0, len_target);
@@ -5038,7 +5043,7 @@ DEFINE_OPERATOR(exp2_operator,          "exp2",      exp2(rhs));
 DEFINE_OPERATOR(log_operator,           "log",       log(rhs));
 DEFINE_OPERATOR(log2_operator,          "log2",      log2(rhs));
 
-DEFINE_OPERATOR(saturate_operator,      "saturate",  max(0.0, min(rhs, 1.0)));
+DEFINE_OPERATOR(saturate_operator,      "saturate",  max(0.0f, min(rhs, 1.0f)));
 
 DEFINE_OPERATOR(random_operator,        "random",    random(rhs));
 
@@ -6922,7 +6927,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
 
 			for (item = 0; item < tex1d_desc.ArraySize; item++) {
 				for (level = 0; level < tex1d_desc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, max(tex1d_desc.MipLevels, 1));
+					index = D3D11CalcSubresource(level, item, max(tex1d_desc.MipLevels, (UINT)1));
 					reason = "Error mapping source staging Texture1D\n";
 					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
 						goto err;
@@ -6986,7 +6991,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
 
 			for (item = 0; item < tex2d_desc.ArraySize; item++) {
 				for (level = 0; level < tex2d_desc.MipLevels; level++) {
-					index = D3D11CalcSubresource(level, item, max(tex2d_desc.MipLevels, 1));
+					index = D3D11CalcSubresource(level, item, max(tex2d_desc.MipLevels, (UINT)1));
 					reason = "Error mapping source staging Texture2D\n";
 					if (FAILED(src_ctx->Map(stg_res, index, D3D11_MAP_READ, 0, &src_map)))
 						goto err;
@@ -8793,11 +8798,11 @@ CommandListCommand* parse_pool_variable_operation(
 			if (ParseFloatToken(*val, value, len))
 				RegisterUnknownSetting(key, value);
 		}
-		return false;
+		return nullptr;
 	}
 
 	if (val->empty())
-		return false;
+		return nullptr;
 
 	PoolVariableOperation* command = new PoolVariableOperation();
 
@@ -10852,7 +10857,7 @@ static ID3D11Buffer *RecreateCompatibleBuffer(
 			// be a multiple of 16, so round up if necessary, and it cannot
 			// be larger than 4096 x 4 component x 4 byte constants.
 			dst_size = (new_desc.ByteWidth + 15) & ~0xf;
-			dst_size = min(dst_size, D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16);
+			dst_size = min(dst_size, (UINT)(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16));
 
 			// Constant buffers cannot be structured, so clear that flag:
 			new_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
@@ -11100,7 +11105,7 @@ static DXGI_FORMAT MakeNonDSVFormat(DXGI_FORMAT fmt)
 template <typename DescType>
 static void Texture2DDescResolveMSAA(DescType *desc) {}
 template <>
-static void Texture2DDescResolveMSAA(D3D11_TEXTURE2D_DESC *desc)
+void Texture2DDescResolveMSAA(D3D11_TEXTURE2D_DESC *desc)
 {
 	desc->SampleDesc.Count = 1;
 	desc->SampleDesc.Quality = 0;
@@ -11753,7 +11758,7 @@ static void SetViewportFromResource(CommandListState *state, ID3D11Resource *res
 	D3D11_TEXTURE1D_DESC tex1d_desc;
 	D3D11_TEXTURE2D_DESC tex2d_desc;
 	D3D11_TEXTURE3D_DESC tex3d_desc;
-	D3D11_VIEWPORT viewport = {0, 0, 0, 0, D3D11_MIN_DEPTH, D3D11_MAX_DEPTH};
+	D3D11_VIEWPORT viewport = {0, 0, 0, 0, 0.0f, 1.0f};
 
 	// TODO: Could handle mip-maps from a view like the CD3D11_VIEWPORT
 	// constructor, but we aren't using them elsewhere so don't care yet.
@@ -11833,7 +11838,7 @@ static void ResolveMSAA(ID3D11Resource *dst_resource, ID3D11Resource *src_resour
 
 	for (item = 0; item < desc.ArraySize; item++) {
 		for (level = 0; level < desc.MipLevels; level++) {
-			index = D3D11CalcSubresource(level, item, max(desc.MipLevels, 1));
+			index = D3D11CalcSubresource(level, item, max(desc.MipLevels, (UINT)1));
 			state->mOrigContext1->ResolveSubresource(dst, index, src, index, fmt);
 		}
 	}

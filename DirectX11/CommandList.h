@@ -194,7 +194,7 @@ public:
 
 	bool SetSourceCommandList(CommandList* source);
 	CommandList* ResolveCommandList();
-	bool CommandList::noop();
+	bool noop();
 
 	CommandList() :
 		post(false),
@@ -1652,7 +1652,7 @@ public:
 	CommandListExpression args[5];
 	ResourceCopyTarget indirect_buffer;
 
-	DrawCommand::DrawCommand() :
+	DrawCommand() :
 		type(DrawCommandType::INVALID)
 	{}
 

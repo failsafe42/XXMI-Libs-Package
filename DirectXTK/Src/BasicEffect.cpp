@@ -18,7 +18,7 @@ using namespace DirectX;
 
 
 // Constant buffer layout. Must match the shader!
-struct BasicEffectConstants
+struct __attribute__((aligned(16))) BasicEffectConstants
 {
     XMVECTOR diffuseColor;
     XMVECTOR emissiveColor;
@@ -382,7 +382,10 @@ const int EffectBase<BasicEffectTraits>::PixelShaderIndices[] =
 
 
 // Global pool of per-device BasicEffect resources.
-SharedResourcePool<ID3D11Device*, EffectBase<BasicEffectTraits>::DeviceResources> EffectBase<BasicEffectTraits>::deviceResourcesPool;
+// clang treats an explicit specialization of a static data member without an
+// initializer as a declaration only (MSVC accepts it as a definition), so the
+// value-initializer is required for the symbol to be emitted.
+template<> SharedResourcePool<ID3D11Device*, EffectBase<BasicEffectTraits>::DeviceResources> EffectBase<BasicEffectTraits>::deviceResourcesPool = {};
 
 
 // Constructor.

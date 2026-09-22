@@ -364,7 +364,7 @@ public:
 	{
 		string interpolation = "";
 
-		for each(Declaration declaration in shader->asPhase[MAIN_PHASE].ppsDecl[0])
+		for (auto &declaration : shader->asPhase[MAIN_PHASE].ppsDecl[0])
 		{
 			if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
 			{
@@ -1131,7 +1131,7 @@ public:
 		immediateEntry.matrixRow = 0;
 		immediateEntry.isRowMajor = false;
 		immediateEntry.bt = DT_float4;
-		mCBufferData[-1 << 16] = immediateEntry;
+		mCBufferData[-(1 << 16)] = immediateEntry;
 		vector<int> pendingStructAttributes[8];
 		int structLevel = -1;
 		// Search for buffer.
@@ -1551,7 +1551,7 @@ public:
 							numRead = sscanf_s(c + pos, "//%*[ =]0x%lx 0x%lx 0x%lx 0x%lx", (unsigned long*)&v[i * 4 + 0], (unsigned long*)&v[i * 4 + 1], (unsigned long*)&v[i * 4 + 2], (unsigned long*)&v[i * 4 + 3]);
 							if (numRead != 4)
 							{
-								logDecompileError("Default values for float4x4 not read correctly, n:" + numRead);
+								logDecompileError("Default values for float4x4 not read correctly, n:" + std::to_string(numRead));
 								break;
 							}
 							NextLine(c, pos, size);

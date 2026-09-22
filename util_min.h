@@ -1,6 +1,8 @@
 #pragma once
 // Less dependencies for inclusion in Hooked*.cpp that cannot include certain headers
 
+#include <stddef.h>
+
 // Grant enums sensible powers that were taken away when C++ ignored C
 // MS already defines a macro DEFINE_ENUM_FLAG_OPERATORS that goes part way,
 // but only does the bitwise operators and returns the result as enum types (so

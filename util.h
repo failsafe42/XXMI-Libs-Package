@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <typeinfo>
 #include <ctype.h>
@@ -224,7 +224,7 @@ static int _autoicmp(const char *s1, const char *s2)
 // To use this function be sure to terminate an EnumName_t list with {NULL, 0}
 // as it cannot use ArraySize on passed in arrays.
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 default, bool *found=NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 def, bool *found=NULL)
 {
 	for (; enum_names->name; enum_names++) {
 		if (!_autoicmp(name, enum_names->name)) {
@@ -237,10 +237,10 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, T2 def
 	if (found)
 		*found = false;
 
-	return default;
+	return def;
 }
 template <class T1, class T2>
-static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t len, T2 default, bool *found=NULL)
+static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t len, T2 def, bool *found=NULL)
 {
 	for (; enum_names->name; enum_names++) {
 		if (!_wcsnicmp(name, enum_names->name, len)) {
@@ -253,7 +253,7 @@ static T2 lookup_enum_val(struct EnumName_t<T1, T2> *enum_names, T1 name, size_t
 	if (found)
 		*found = false;
 
-	return default;
+	return def;
 }
 template <class T1, class T2>
 static T1 lookup_enum_name(struct EnumName_t<T1, T2> *enum_names, T2 val)
@@ -712,9 +712,13 @@ static const char* type_name(IUnknown *object)
 
 	try {
 		return typeid(*object).name();
+#ifdef _MSC_VER
 	} catch (__non_rtti_object) {
 		return "<NO_RTTI>";
 	} catch(bad_typeid) {
+#else
+	} catch(bad_typeid) {
+#endif
 		return "<NULL>";
 	}
 }
@@ -738,9 +742,11 @@ static const char* type_name_dx9(IUnknown *object)
 	try {
 		return typeid(*object).name();
 	}
+#ifdef _MSC_VER
 	catch (__non_rtti_object) {
 		return "<NO_RTTI>";
 	}
+#endif
 	catch (bad_typeid) {
 		return "<NULL>";
 	}
@@ -761,8 +767,8 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 		int hexdump = 0, bool d3dcompiler_46_compat = true)
 {
 	string comments;
-	vector<byte> byteCode(BytecodeLength);
-	vector<byte> disassembly;
+	vector<unsigned char> byteCode(BytecodeLength);
+	vector<unsigned char> disassembly;
 	HRESULT r;
 
 	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
@@ -775,7 +781,7 @@ static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength
 			d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
 #endif // MIGOTO_DX
 	if (FAILED(r)) {
-		LogInfo("  disassembly failed. Error: %x\n", r);
+		LogInfo("  disassembly failed. Error: %08x\n", (UINT)r);
 		return "";
 	}
 
@@ -929,7 +935,7 @@ static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wcha
 
 static HRESULT CreateHLSLTextFile(UINT64 hash, string hlslText)
 {
-
+	return E_NOTIMPL;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -987,14 +993,12 @@ void touch_file(wchar_t *path, DWORD flags=0);
 bool check_interface_supported(IUnknown *unknown, REFIID riid);
 void analyse_iunknown(IUnknown *unknown);
 
-// For the time being, since we are not setup to use the Win10 SDK, we'll add
-// these manually. Some games under Win10 are requesting these.
-
-struct _declspec(uuid("9d06dffa-d1e5-4d07-83a8-1bb123f2f841")) ID3D11Device2;
-struct _declspec(uuid("420d5b32-b90c-4da4-bef0-359f6a24a83a")) ID3D11DeviceContext2;
-struct _declspec(uuid("A8BE2AC4-199F-4946-B331-79599FB98DE7")) IDXGISwapChain2;
-struct _declspec(uuid("94D99BDB-F1F8-4AB0-B236-7DA0170EDAB1")) IDXGISwapChain3;
-struct _declspec(uuid("3D585D5A-BD4A-489E-B1F4-3DBCB6452FFB")) IDXGISwapChain4;
+// These interfaces used to be manually stubbed because the old toolchain did
+// not ship the newer Windows SDK headers.  The clang headers provide them in
+// full (with proper uuid specializations), so use those instead of local
+// incomplete declarations that collide with them.
+#include <d3d11_2.h>
+#include <dxgi1_5.h>
 
 std::string NameFromIID(IID id);
 
@@ -1588,18 +1592,29 @@ uint32_t popcount(uint32_t x);
 float random(float max);
 uint64_t GetSystemTicks();
 
+static uint64_t SafeTickRatio(float min_fps);
+
 class FPSCounter
 {
 public:
-	FPSCounter(float smoothing = 0.1f, float min_fps = 1.0f) : 
-		m_smoothing((std::max)(0.0f, (std::min)(smoothing, 1.0f))), // TODO C++17: m_smoothing(std::clamp(smoothing, 0.0f, 1.0f))
-		m_max_delta(static_cast<uint64_t>(1'000'000.0f / (std::max)(min_fps, 0.001f)))
+	FPSCounter(float smoothing = 0.1f, float min_fps = 1.0f) :
+		m_max_delta(FPSCounter::SafeTickRatio(min_fps))
 	{}
 
 	void Update(uint64_t system_tick_count);
 	float GetFPS() const;
 
 private:
+	static uint64_t SafeTickRatio(float min_fps)
+	{
+		// Hardened: clamp so float->u64 can never leave representable range.
+		// 1'000'000.0f / (std::max)(min_fps, 0.001f) is capped at 1'000'000'000.0f.
+		const float safe_min = (std::max)(min_fps, 0.001f);
+		const float ratio = 1'000'000.0f / safe_min;
+		const float clamped = (std::min)(ratio, 1'000'000'000.0f);
+		return static_cast<uint64_t>(clamped);
+	}
+
 	float m_smoothing;
 	uint64_t m_max_delta;
 
@@ -1608,3 +1623,4 @@ private:
 	float m_fps = 0.0f;
 	bool m_initialized = false;
 };
+

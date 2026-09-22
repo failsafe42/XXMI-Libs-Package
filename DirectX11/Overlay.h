@@ -17,16 +17,6 @@
 
 class HackerSwapChain;
 
-enum LogLevel {
-	LOG_DIRE,
-	LOG_WARNING,
-	LOG_WARNING_MONOSPACE,
-	LOG_NOTICE,
-	LOG_INFO,
-
-	NUM_LOG_LEVELS
-};
-
 class OverlayNotice {
 public:
 	std::wstring message;
@@ -118,5 +108,3 @@ public:
 };
 
 void ClearNotices();
-void LogOverlayW(LogLevel level, wchar_t *fmt, ...);
-void LogOverlay(LogLevel level, char *fmt, ...);

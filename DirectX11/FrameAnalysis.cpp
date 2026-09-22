@@ -173,12 +173,12 @@ void FrameAnalysisContext::FrameAnalysisLogW(wchar_t* fmt, ...)
 }
 
 #define FALogInfo(fmt, ...) { \
-	FrameAnalysisLogW("3DMigoto " fmt, __VA_ARGS__); \
+	FrameAnalysisLogW("3DMigoto " fmt, ##__VA_ARGS__); \
 } while (0)
 
 #define FALogErr(fmt, ...) { \
-	LogInfoW("Frame Analysis: " fmt, __VA_ARGS__); \
-	FrameAnalysisLogW("3DMigoto " fmt, __VA_ARGS__); \
+	LogInfoW("Frame Analysis: " fmt, ##__VA_ARGS__); \
+	FrameAnalysisLogW("3DMigoto " fmt, ##__VA_ARGS__); \
 } while (0)
 
 
@@ -680,7 +680,7 @@ HRESULT FrameAnalysisContext::ResolveMSAA(ID3D11Texture2D *src,
 
 	for (item = 0; item < srcDesc->ArraySize; item++) {
 		for (level = 0; level < srcDesc->MipLevels; level++) {
-			index = D3D11CalcSubresource(level, item, max(srcDesc->MipLevels, 1));
+			index = D3D11CalcSubresource(level, item, max(srcDesc->MipLevels, (UINT)1));
 			GetDumpingContext()->ResolveSubresource(resolved, index, src, index, fmt);
 		}
 	}
@@ -1698,7 +1698,7 @@ void FrameAnalysisContext::determine_vb_count(UINT *count, ID3D11Buffer *staged_
 			ib_end = min(ib_end, ib_start + call_info->IndexCount);
 
 		for (i = ib_start; i < ib_end; i++)
-			max_vertex = max(max_vertex, buf16[i]);
+			max_vertex = max(max_vertex, (UINT)buf16[i]);
 		*count = max_vertex + 1;
 		break;
 	case DXGI_FORMAT_R32_UINT:
@@ -2514,10 +2514,10 @@ void FrameAnalysisContext::DumpVBs(DrawCallInfo *call_info, ID3D11Buffer *staged
 			continue;
 
 		// Skip this vertex buffer if it is not used in the IA layout:
+		uint32_t region_hash = 0;
 		if (!vb_slot_in_layout(i, layout))
 			goto continue_release;
 
-		uint32_t region_hash = 0;
 		if (G->track_region_hashes && strides[i]) {
 			UINT region_offset = GetVertexBufferRegionOffset(strides[i], call_info, offsets[i]);
 			UINT region_size = GetVertexBufferRegionSize(strides[i], call_info);

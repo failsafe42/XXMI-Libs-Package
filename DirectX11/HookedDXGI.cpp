@@ -747,7 +747,7 @@ static void HookFactory2CreateSwapChainMethods(IDXGIFactory2* dxgiFactory)
 	LogInfo("*** IDXGIFactory2 creating hooks for CreateSwapChain variants. \n");
 
 	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForHwnd,
-		lpvtbl_CreateSwapChainForHwnd(dxgiFactory), Hooked_CreateSwapChainForHwnd, 0);
+		(void*)lpvtbl_CreateSwapChainForHwnd(dxgiFactory), (void*)Hooked_CreateSwapChainForHwnd, 0);
 
 	if (dwOsErr == ERROR_SUCCESS)
 		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForHwnd hook.\n");
@@ -756,7 +756,7 @@ static void HookFactory2CreateSwapChainMethods(IDXGIFactory2* dxgiFactory)
 
 
 	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForCoreWindow,
-		lpvtbl_CreateSwapChainForCoreWindow(dxgiFactory), Hooked_CreateSwapChainForCoreWindow, 0);
+		(void*)lpvtbl_CreateSwapChainForCoreWindow(dxgiFactory), (void*)Hooked_CreateSwapChainForCoreWindow, 0);
 
 	if (dwOsErr == ERROR_SUCCESS)
 		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForCoreWindow hook.\n");
@@ -765,7 +765,7 @@ static void HookFactory2CreateSwapChainMethods(IDXGIFactory2* dxgiFactory)
 
 
 	dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChainForComposition,
-		lpvtbl_CreateSwapChainForComposition(dxgiFactory), Hooked_CreateSwapChainForComposition, 0);
+		(void*)lpvtbl_CreateSwapChainForComposition(dxgiFactory), (void*)Hooked_CreateSwapChainForComposition, 0);
 
 	if (dwOsErr == ERROR_SUCCESS)
 		LogInfo("  Successfully installed IDXGIFactory2->CreateSwapChainForComposition hook.\n");
@@ -856,13 +856,13 @@ HRESULT __stdcall Hooked_CreateSwapChain(
 	get_tls()->hooking_quirk_protection = true;
 	HRESULT hr = fnOrigCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
 	get_tls()->hooking_quirk_protection = false;
+	IDXGISwapChain *retChain = ppSwapChain ? *ppSwapChain : nullptr;
 	if (FAILED(hr))
 	{
 		LogInfo("->Failed result %#x\n\n", hr);
 		goto out_release;
 	}
 
-	IDXGISwapChain *retChain = ppSwapChain ? *ppSwapChain : nullptr;
 	LogInfo("  CreateSwapChain returned handle = %p\n", retChain);
 	analyse_iunknown(retChain);
 
@@ -888,7 +888,7 @@ static void HookCreateSwapChain(void* factory)
 
 	SIZE_T hook_id;
 	DWORD dwOsErr = cHookMgr.Hook(&hook_id, (void**)&fnOrigCreateSwapChain,
-		lpvtbl_CreateSwapChain(dxgiFactory), Hooked_CreateSwapChain, 0);
+		(void*)lpvtbl_CreateSwapChain(dxgiFactory), (void*)Hooked_CreateSwapChain, 0);
 
 	if (dwOsErr == ERROR_SUCCESS)
 		LogInfo("  Successfully installed IDXGIFactory->CreateSwapChain hook.\n");

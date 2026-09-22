@@ -84,7 +84,7 @@ SpriteFont::Impl::Impl(_In_ ID3D11Device* device, _In_ BinaryReader* reader, boo
         if (reader->Read<uint8_t>() != *magic)
         {
             DebugTrace( "SpriteFont provided with an invalid .spritefont file\n" );
-            throw std::exception("Not a MakeSpriteFont output binary");
+            throw std::runtime_error("Not a MakeSpriteFont output binary");
         }
     }
 
@@ -141,7 +141,7 @@ SpriteFont::Impl::Impl(ID3D11ShaderResourceView* texture, Glyph const* glyphs, s
 {
     if (!std::is_sorted(glyphs, glyphs + glyphCount))
     {
-        throw std::exception("Glyphs must be in ascending codepoint order");
+        throw std::runtime_error("Glyphs must be in ascending codepoint order");
     }
 }
 
@@ -162,7 +162,7 @@ SpriteFont::Glyph const* SpriteFont::Impl::FindGlyph(wchar_t character) const
     }
 
     DebugTrace( "SpriteFont encountered a character not in the font (%u, %C), and no default glyph was provided\n", character, character );
-    throw std::exception("Character not in font");
+    throw std::runtime_error("Character not in font");
 }
 
 

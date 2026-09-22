@@ -1,0 +1,88 @@
+[workspace]
+channels = ["conda-forge"]
+name = "XXMI-Libs-Package_1"
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+version = "0.1.0"
+
+# ---------------------------------------------------------------------------
+# Native (Windows host) build
+# ---------------------------------------------------------------------------
+# Two ways to build on Windows:
+#   pixi run build            -> MSBuild Release x64 (build.bat / vswhere)
+#   pixi run zigbuild         -> Zig debug build (zig-out\bin\d3d11.dll)
+#   pixi run zigbuild:release -> Zig ReleaseFast build
+# The Zig pipeline replaces the .vcxproj/MSBuild chain: DirectXTK, pcre2,
+# BinaryDecompiler and the d3d11 wrapper are all compiled and linked by the
+# build.zig recipe (statically, against the pixi-env MinGW-w64 runtime).
+# ---------------------------------------------------------------------------
+
+[target.win-64.dependencies]
+# Zig is available on every host, so the cross-build below also works natively
+# on Windows (windows-gnu target). CMake/ninja are kept for auxiliary tools.
+zig = "*"
+cmake = "*"
+ninja = "*"
+
+# ---------------------------------------------------------------------------
+# Cross-compilation (Linux and macOS hosts -> Windows)
+# ---------------------------------------------------------------------------
+# Zig is used as the cross-compiler: a single conda package per host that
+# bundles clang/lld + MinGW-w64 headers and import libs, so Windows x86, x64
+# and arm64 binaries can be emitted from Linux or macOS with no extra SDK.
+#
+# Toolchain invocation (see tasks below):
+#   $ zig c++ -target x86_64-windows-gnu  ...   # Windows x86_64
+#   $ zig c++ -target x86-windows-gnu     ...   # Windows i686 (x86)
+#   $ zig c++ -target aarch64-windows-gnu ...   # Windows arm64
+#   $ zig cc  -target x86_64-windows-gnu  ...   # C translation units
+#   $ zig rc  ... .rc                          # Windows resource compiler
+# ---------------------------------------------------------------------------
+
+[target.linux-64.dependencies]
+zig = "*"
+# Cross helpers used by pcre2 / crc32c etc.:
+make = "*"
+cmake = "*"
+ninja = "*"
+pkg-config = "*"
+
+[target."osx-*".dependencies]
+zig = "*"
+make = "*"
+cmake = "*"
+ninja = "*"
+pkg-config = "*"
+
+[tasks]
+# Native Windows build (unchanged from the original build.bat)
+build = "cmd /c build.bat"
+
+# Cross-compilation tasks are only exposed on hosts that carry the Zig
+# toolchain. See [target.linux-64.tasks] and [target."osx-*".tasks].
+
+[target.win-64.tasks]
+"toolchain" = { cmd = "zig version", description = "Print the installed Zig version" }
+"zigbuild" = { cmd = "zig build", description = "Zig debug build of d3d11.dll (zig-out\\bin\\d3d11.dll)" }
+"zigbuild:release" = { cmd = "zig build -Drelease=true", description = "Zig ReleaseFast build of d3d11.dll" }
+
+[target.linux-64.tasks]
+# Sanity check that Zig is wired up correctly.
+"toolchain" = { cmd = "zig version", description = "Print the installed Zig version" }
+
+# Compile a trivial Windows exe with the cross toolchain to prove the
+# cross-compilation environment itself works end-to-end.
+"hello:x64" = { cmd = "zig c++ -target x86_64-windows-gnu -O ReleaseFast -luser32 -o .pixi/hello-win64.exe cross/hello.cpp", description = "Cross-compile a smoke-test Windows x86_64 exe" }
+"hello:x86" = { cmd = "zig c++ -target x86-windows-gnu -O ReleaseFast -luser32 -o .pixi/hello-win32.exe cross/hello.cpp", description = "Cross-compile a smoke-test Windows i686 exe" }
+
+# WIP entry point for the Zig-based cross build of the solution.
+# The build.zig recipe defaults to a windows-gnu target, so on a non-Windows
+# host `zig build` emits a Windows d3d11.dll. The MinGW-w64 paths in
+# build.zig are pixi-env specific, so these tasks are not yet proven end-to-end
+# on linux/macOS.
+"build:x64" = { cmd = "zig build", description = "Zig cross build of the solution (WIP)" }
+
+[target."osx-*".tasks]
+"toolchain" = { cmd = "zig version", description = "Print the installed Zig version" }
+"hello:x64" = { cmd = "zig c++ -target x86_64-windows-gnu -O ReleaseFast -luser32 -o .pixi/hello-win64.exe cross/hello.cpp", description = "Cross-compile a smoke-test Windows x86_64 exe" }
+"hello:x86" = { cmd = "zig c++ -target x86-windows-gnu -O ReleaseFast -luser32 -o .pixi/hello-win32.exe cross/hello.cpp", description = "Cross-compile a smoke-test Windows i686 exe" }
+"build:x64" = { cmd = "zig build", description = "Zig cross build of the solution (WIP)" }

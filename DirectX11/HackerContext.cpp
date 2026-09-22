@@ -538,7 +538,7 @@ void HackerContext::DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 
 	HRESULT hr;
 	unsigned i;
 	wstring tagline(L"//");
-	vector<byte> patched_bytecode;
+	vector<BYTE> patched_bytecode;
 	vector<char> asm_vector;
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
@@ -1501,6 +1501,8 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	if (Profiling::mode == Profiling::Mode::SUMMARY)
 		Profiling::start(&profiling_state);
 
+	bool deallocate_diverted_memory = true;
+
 	if (mMappedResources.empty())
 		goto out_profile;
 
@@ -1508,8 +1510,6 @@ void HackerContext::TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresou
 	if (i == mMappedResources.end())
 		goto out_profile;
 	map_info = &i->second;
-
-	bool deallocate_diverted_memory = true;
 
 	if (G->track_region_hashes && map_info->bind_flags & (D3D11_BIND_VERTEX_BUFFER | D3D11_BIND_INDEX_BUFFER | D3D11_BIND_CONSTANT_BUFFER))
 		UpdateResourceDataCacheFromMap(pResource, map_info->map.pData, map_info->size, &deallocate_diverted_memory);

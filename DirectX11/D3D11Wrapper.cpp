@@ -504,7 +504,7 @@ int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 	return (*_D3DKMTQueryAdapterInfo)(info);
 }
 
-int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
+extern "C" int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
 	LogInfo("OpenAdapter10 called.\n");
@@ -512,7 +512,7 @@ int WINAPI OpenAdapter10(struct D3D10DDIARG_OPENADAPTER *adapter)
 	return (*_OpenAdapter10)(adapter);
 }
 
-int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
+extern "C" int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 {
 	InitD311();
 	LogInfo("OpenAdapter10_2 called.\n");
@@ -520,7 +520,7 @@ int WINAPI OpenAdapter10_2(struct D3D10DDIARG_OPENADAPTER *adapter)
 	return (*_OpenAdapter10_2)(adapter);
 }
 
-int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
+extern "C" int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, int e, int f, int g, int h, int i, int j)
 {
 	InitD311();
 	LogInfo("D3D11CoreCreateDevice called.\n");
@@ -529,7 +529,7 @@ int WINAPI D3D11CoreCreateDevice(__int32 a, int b, int c, LPCSTR lpModuleName, i
 }
 
 
-HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
+extern "C" HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1, const void *unknown2, REFIID riid, void **ppvObj)
 {
 	InitD311();
 	LogInfo("D3D11CoreCreateLayeredDevice called.\n");
@@ -537,7 +537,7 @@ HRESULT WINAPI D3D11CoreCreateLayeredDevice(const void *unknown0, DWORD unknown1
 	return (*_D3D11CoreCreateLayeredDevice)(unknown0, unknown1, unknown2, riid, ppvObj);
 }
 
-SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
+extern "C" SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
 	LogInfo("D3D11CoreGetLayeredDeviceSize called.\n");
@@ -545,7 +545,7 @@ SIZE_T WINAPI D3D11CoreGetLayeredDeviceSize(const void *unknown0, DWORD unknown1
 	return (*_D3D11CoreGetLayeredDeviceSize)(unknown0, unknown1);
 }
 
-HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
+extern "C" HRESULT WINAPI D3D11CoreRegisterLayers(const void *unknown0, DWORD unknown1)
 {
 	InitD311();
 	LogInfo("D3D11CoreRegisterLayers called.\n");
@@ -623,7 +623,7 @@ static void ShowDebugInfo(ID3D11Device *origDevice)
 				d3dInfoQueue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
 			}
 		}
-		d3dDebug->ReportLiveDeviceObjects(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL);
+		d3dDebug->ReportLiveDeviceObjects((D3D11_RLDO_FLAGS)(D3D11_RLDO_SUMMARY | D3D11_RLDO_DETAIL));
 	}
 }
 
@@ -949,7 +949,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	_In_opt_ const		D3D_FEATURE_LEVEL    *pFeatureLevels,
 						UINT                 FeatureLevels,
 						UINT                 SDKVersion,
-	_In_opt_			DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
+	_In_opt_ const		DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
 	_Out_opt_			IDXGISwapChain		 **ppSwapChain,
 	_Out_opt_			ID3D11Device         **ppDevice,
 	_Out_opt_			D3D_FEATURE_LEVEL    *pFeatureLevel,
@@ -996,7 +996,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 	Flags = EnableDebugFlags(Flags);
 #endif
 
-	override_swap_chain(pSwapChainDesc, &origSwapChainDesc);
+	override_swap_chain(const_cast<DXGI_SWAP_CHAIN_DESC*>(pSwapChainDesc), &origSwapChainDesc);
 
 	get_tls()->hooking_quirk_protection = true;
 	HRESULT ret = (*_D3D11CreateDeviceAndSwapChain)(pAdapter, DriverType, Software, Flags, pFeatureLevels,
@@ -1025,7 +1025,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
 #endif
 
 	HackerDevice *deviceWrap = wrap_d3d11_device_and_context(ppDevice, ppImmediateContext);
-	wrap_swap_chain(deviceWrap, ppSwapChain, pSwapChainDesc, &origSwapChainDesc);
+	wrap_swap_chain(deviceWrap, ppSwapChain, const_cast<DXGI_SWAP_CHAIN_DESC*>(pSwapChainDesc), &origSwapChainDesc);
 
 	LogInfo("->D3D11CreateDeviceAndSwapChain result = %x\n", ret);
 
@@ -1201,7 +1201,7 @@ HMODULE __stdcall Hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 // app - we don't automatically intercept the real d3d11.dll, and any attempt
 // to breach the container (say, by accessing one of our files outside of where
 // the container allows) may result in us being mercilessly killed.
-LRESULT CALLBACK CBTProc(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
+extern "C" LRESULT CALLBACK CBTProc(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	return CallNextHookEx(0, nCode, wParam, lParam);
 }

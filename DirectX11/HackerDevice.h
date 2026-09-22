@@ -227,7 +227,7 @@ public:
 		/* [annotation] */
 		_Out_opt_  ID3D11InputLayout **ppInputLayout);
 
-	HRESULT HackerDevice::CreateInputLayoutInternal(
+	HRESULT CreateInputLayoutInternal(
 		const D3D11_INPUT_ELEMENT_DESC* pInputElementDescs,
 		UINT NumElements,
 		const void* pShaderBytecodeWithInputSignature,
