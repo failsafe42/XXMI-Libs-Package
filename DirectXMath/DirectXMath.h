@@ -13,10 +13,10 @@
 #error DirectX Math requires C++
 #endif
 
-#define DIRECTX_MATH_VERSION 320
+#define DIRECTX_MATH_VERSION 319
 
-#if defined(_MSC_VER) && (_MSC_VER < 1910)
-#error DirectX Math requires Visual C++ 2017 or later.
+#if defined(_MSC_VER) && defined(_GAMING_XBOX) && defined(_M_X64) && !defined(_XM_F16C_INTRINSICS_) && !defined(_XM_NO_INTRINSICS_)
+#define _XM_F16C_INTRINSICS_
 #endif
 
 #if defined(_MSC_VER) && !defined(_M_ARM) && !defined(_M_ARM64) && !defined(_M_HYBRID_X86_ARM64) && !defined(_M_ARM64EC) && (!_MANAGED) && (!_M_CEE) && (!defined(_M_IX86_FP) || (_M_IX86_FP > 1)) && !defined(_XM_NO_INTRINSICS_) && !defined(_XM_VECTORCALL_)
@@ -89,9 +89,6 @@
 #endif
 #endif // !_XM_ARM_NEON_INTRINSICS_ && !_XM_SSE_INTRINSICS_ && !_XM_NO_INTRINSICS_
 
-#if defined(_XM_SSE_INTRINSICS_) && defined(_MSC_VER) && (_MSC_VER >= 1920) && !defined(__clang__) && !defined(_XM_SVML_INTRINSICS_) && !defined(_XM_DISABLE_INTEL_SVML_)
-#define _XM_SVML_INTRINSICS_
-#endif
 
 #if !defined(_XM_NO_XMVECTOR_OVERLOADS_) && (defined(__clang__) || defined(__GNUC__)) && !defined(_XM_NO_INTRINSICS_)
 #define _XM_NO_XMVECTOR_OVERLOADS_
@@ -211,11 +208,7 @@
 #define XM_PERMUTE_PS( v, c ) _mm_shuffle_ps((v), (v), c )
 #endif
 
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
 #define XM_LOADU_SI16( p ) _mm_cvtsi32_si128(*reinterpret_cast<unsigned short const*>(p))
-#else
-#define XM_LOADU_SI16( p ) _mm_loadu_si16(p)
-#endif
 
 #endif // _XM_SSE_INTRINSICS_ && !_XM_NO_INTRINSICS_
 
@@ -338,7 +331,7 @@ namespace DirectX
      *
      ****************************************************************************/
 
-#ifdef _MSC_VER
+#ifdef _MSC_VER    
 #pragma warning(push)
 #pragma warning(disable:4068 4201 4365 4324 4820)
      // C4068: ignore unknown pragmas
@@ -1735,7 +1728,7 @@ namespace DirectX
 #if defined(_XM_SSE_INTRINSICS_) && !defined(_XM_NO_INTRINSICS_)
 
 // PermuteHelper internal template (SSE only)
-    namespace MathInternal
+    namespace Internal
     {
         // Slow path fallback for permutes that do not map to a single SSE shuffle opcode.
         template<uint32_t Shuffle, bool WhichX, bool WhichY, bool WhichZ, bool WhichW> struct PermuteHelper
@@ -1804,7 +1797,7 @@ namespace DirectX
         constexpr bool WhichZ = PermuteZ > 3;
         constexpr bool WhichW = PermuteW > 3;
 
-        return MathInternal::PermuteHelper<Shuffle, WhichX, WhichY, WhichZ, WhichW>::Permute(V1, V2);
+        return Internal::PermuteHelper<Shuffle, WhichX, WhichY, WhichZ, WhichW>::Permute(V1, V2);
 #else
 
         return XMVectorPermute(V1, V2, PermuteX, PermuteY, PermuteZ, PermuteW);
@@ -2156,7 +2149,7 @@ namespace DirectX
      *
      ****************************************************************************/
 
-#ifdef _MSC_VER
+#ifdef _MSC_VER    
 #pragma warning(push)
 #pragma warning(disable:4068 4214 4204 4365 4616 4640 6001 6101)
      // C4068/4616: ignore unknown pragmas
@@ -2164,7 +2157,7 @@ namespace DirectX
      // C4365/4640: Off by default noise
      // C6001/6101: False positives
 #endif
-
+    
 #ifdef _PREFAST_
 #pragma prefast(push)
 #pragma prefast(disable : 25000, "FXMVECTOR is 16 bytes")
@@ -2281,7 +2274,7 @@ namespace DirectX
 #ifdef _PREFAST_
 #pragma prefast(pop)
 #endif
-#ifdef _MSC_VER
+#ifdef _MSC_VER    
 #pragma warning(pop)
 #endif
 

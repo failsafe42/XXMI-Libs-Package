@@ -10,8 +10,8 @@
 #pragma once
 
 #if defined(_XM_NO_INTRINSICS_)
-#define XMISNAN(x)  isnan(x)
-#define XMISINF(x)  isinf(x)
+#define XMISNAN(x)  ((*(const uint32_t*)&(x) & 0x7F800000) == 0x7F800000 && (*(const uint32_t*)&(x) & 0x7FFFFF) != 0)
+#define XMISINF(x)  ((*(const uint32_t*)&(x) & 0x7FFFFFFF) == 0x7F800000)
 #endif
 
 #if defined(_XM_SSE_INTRINSICS_)
@@ -2293,7 +2293,7 @@ inline XMVECTOR XM_CALLCONV XMVectorMax
 
 //------------------------------------------------------------------------------
 
-namespace MathInternal
+namespace Internal
 {
     // Round to nearest (even) a.k.a. banker's rounding
     inline float round_to_nearest(float x) noexcept
@@ -2326,10 +2326,10 @@ inline XMVECTOR XM_CALLCONV XMVectorRound(FXMVECTOR V) noexcept
 #if defined(_XM_NO_INTRINSICS_)
 
     XMVECTORF32 Result = { { {
-            MathInternal::round_to_nearest(V.vector4_f32[0]),
-            MathInternal::round_to_nearest(V.vector4_f32[1]),
-            MathInternal::round_to_nearest(V.vector4_f32[2]),
-            MathInternal::round_to_nearest(V.vector4_f32[3])
+            Internal::round_to_nearest(V.vector4_f32[0]),
+            Internal::round_to_nearest(V.vector4_f32[1]),
+            Internal::round_to_nearest(V.vector4_f32[2]),
+            Internal::round_to_nearest(V.vector4_f32[3])
         } } };
     return Result.v;
 
@@ -3253,10 +3253,10 @@ inline XMVECTOR XM_CALLCONV XMVectorExp2(FXMVECTOR V) noexcept
 {
 #if defined(_XM_NO_INTRINSICS_)
     XMVECTORF32 Result = { { {
-            exp2f(V.vector4_f32[0]),
-            exp2f(V.vector4_f32[1]),
-            exp2f(V.vector4_f32[2]),
-            exp2f(V.vector4_f32[3])
+            powf(2.0f, V.vector4_f32[0]),
+            powf(2.0f, V.vector4_f32[1]),
+            powf(2.0f, V.vector4_f32[2]),
+            powf(2.0f, V.vector4_f32[3])
         } } };
     return Result.v;
 #elif defined(_XM_ARM_NEON_INTRINSICS_)
@@ -3443,7 +3443,7 @@ inline XMVECTOR XM_CALLCONV XMVectorExp(FXMVECTOR V) noexcept
 
 #if defined(_XM_SSE_INTRINSICS_)
 
-namespace MathInternal
+namespace Internal
 {
     inline __m128i multi_sll_epi32(__m128i value, __m128i count) noexcept
     {
@@ -3543,13 +3543,13 @@ namespace MathInternal
         r = _mm_or_si128(r, s);
         return r;
     }
-} // namespace MathInternal
+} // namespace Internal
 
 #endif // _XM_SSE_INTRINSICS_
 
 #if defined(_XM_ARM_NEON_INTRINSICS_)
 
-namespace MathInternal
+namespace Internal
 {
     inline int32x4_t GetLeadingBit(const int32x4_t value) noexcept
     {
@@ -3590,7 +3590,7 @@ namespace MathInternal
         return r;
     }
 
-} // namespace MathInternal
+} // namespace Internal
 
 #endif
 
@@ -3599,11 +3599,13 @@ namespace MathInternal
 inline XMVECTOR XM_CALLCONV XMVectorLog2(FXMVECTOR V) noexcept
 {
 #if defined(_XM_NO_INTRINSICS_)
+    const float fScale = 1.4426950f; // (1.0f / logf(2.0f));
+
     XMVECTORF32 Result = { { {
-            log2f(V.vector4_f32[0]),
-            log2f(V.vector4_f32[1]),
-            log2f(V.vector4_f32[2]),
-            log2f(V.vector4_f32[3])
+            logf(V.vector4_f32[0]) * fScale,
+            logf(V.vector4_f32[1]) * fScale,
+            logf(V.vector4_f32[2]) * fScale,
+            logf(V.vector4_f32[3]) * fScale
         } } };
     return Result.v;
 #elif defined(_XM_ARM_NEON_INTRINSICS_)
@@ -3617,7 +3619,7 @@ inline XMVECTOR XM_CALLCONV XMVectorLog2(FXMVECTOR V) noexcept
     int32x4_t trailingNor = trailing;
 
     // Compute exponent and significand for subnormals.
-    int32x4_t leading = MathInternal::GetLeadingBit(trailing);
+    int32x4_t leading = Internal::GetLeadingBit(trailing);
     int32x4_t shift = vsubq_s32(g_XMNumTrailing, leading);
     int32x4_t exponentSub = vsubq_s32(g_XMSubnormalExponent, shift);
     int32x4_t trailingSub = vshlq_s32(trailing, shift);
@@ -3681,10 +3683,10 @@ inline XMVECTOR XM_CALLCONV XMVectorLog2(FXMVECTOR V) noexcept
     __m128i trailingNor = trailing;
 
     // Compute exponent and significand for subnormals.
-    __m128i leading = MathInternal::GetLeadingBit(trailing);
+    __m128i leading = Internal::GetLeadingBit(trailing);
     __m128i shift = _mm_sub_epi32(g_XMNumTrailing, leading);
     __m128i exponentSub = _mm_sub_epi32(g_XMSubnormalExponent, shift);
-    __m128i trailingSub = MathInternal::multi_sll_epi32(trailing, shift);
+    __m128i trailingSub = Internal::multi_sll_epi32(trailing, shift);
     trailingSub = _mm_and_si128(trailingSub, g_XMQNaNTest);
 
     __m128i select0 = _mm_and_si128(isExponentZero, exponentSub);
@@ -3777,7 +3779,7 @@ inline XMVECTOR XM_CALLCONV XMVectorLog10(FXMVECTOR V) noexcept
     int32x4_t trailingNor = trailing;
 
     // Compute exponent and significand for subnormals.
-    int32x4_t leading = MathInternal::GetLeadingBit(trailing);
+    int32x4_t leading = Internal::GetLeadingBit(trailing);
     int32x4_t shift = vsubq_s32(g_XMNumTrailing, leading);
     int32x4_t exponentSub = vsubq_s32(g_XMSubnormalExponent, shift);
     int32x4_t trailingSub = vshlq_s32(trailing, shift);
@@ -3843,10 +3845,10 @@ inline XMVECTOR XM_CALLCONV XMVectorLog10(FXMVECTOR V) noexcept
     __m128i trailingNor = trailing;
 
     // Compute exponent and significand for subnormals.
-    __m128i leading = MathInternal::GetLeadingBit(trailing);
+    __m128i leading = Internal::GetLeadingBit(trailing);
     __m128i shift = _mm_sub_epi32(g_XMNumTrailing, leading);
     __m128i exponentSub = _mm_sub_epi32(g_XMSubnormalExponent, shift);
-    __m128i trailingSub = MathInternal::multi_sll_epi32(trailing, shift);
+    __m128i trailingSub = Internal::multi_sll_epi32(trailing, shift);
     trailingSub = _mm_and_si128(trailingSub, g_XMQNaNTest);
 
     __m128i select0 = _mm_and_si128(isExponentZero, exponentSub);
@@ -3941,7 +3943,7 @@ inline XMVECTOR XM_CALLCONV XMVectorLogE(FXMVECTOR V) noexcept
     int32x4_t trailingNor = trailing;
 
     // Compute exponent and significand for subnormals.
-    int32x4_t leading = MathInternal::GetLeadingBit(trailing);
+    int32x4_t leading = Internal::GetLeadingBit(trailing);
     int32x4_t shift = vsubq_s32(g_XMNumTrailing, leading);
     int32x4_t exponentSub = vsubq_s32(g_XMSubnormalExponent, shift);
     int32x4_t trailingSub = vshlq_s32(trailing, shift);
@@ -4007,10 +4009,10 @@ inline XMVECTOR XM_CALLCONV XMVectorLogE(FXMVECTOR V) noexcept
     __m128i trailingNor = trailing;
 
     // Compute exponent and significand for subnormals.
-    __m128i leading = MathInternal::GetLeadingBit(trailing);
+    __m128i leading = Internal::GetLeadingBit(trailing);
     __m128i shift = _mm_sub_epi32(g_XMNumTrailing, leading);
     __m128i exponentSub = _mm_sub_epi32(g_XMSubnormalExponent, shift);
-    __m128i trailingSub = MathInternal::multi_sll_epi32(trailing, shift);
+    __m128i trailingSub = Internal::multi_sll_epi32(trailing, shift);
     trailingSub = _mm_and_si128(trailingSub, g_XMQNaNTest);
 
     __m128i select0 = _mm_and_si128(isExponentZero, exponentSub);
