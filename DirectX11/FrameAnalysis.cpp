@@ -173,12 +173,12 @@ void FrameAnalysisContext::FrameAnalysisLogW(wchar_t* fmt, ...)
 }
 
 #define FALogInfo(fmt, ...) { \
-	FrameAnalysisLogW("3DMigoto " fmt, ##__VA_ARGS__); \
+	FrameAnalysisLogW("3DMigoto " fmt, __VA_ARGS__); \
 } while (0)
 
-#define FALogErr(fmt, ...) { \
-	LogInfoW("Frame Analysis: " fmt, ##__VA_ARGS__); \
-	FrameAnalysisLogW("3DMigoto " fmt, ##__VA_ARGS__); \
+#define FALogErr(...) { \
+	LogInfoW("Frame Analysis: " __VA_ARGS__); \
+	FrameAnalysisLogW("3DMigoto " __VA_ARGS__); \
 } while (0)
 
 
