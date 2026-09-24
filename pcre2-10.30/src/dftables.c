@@ -66,16 +66,6 @@ int i = 1;
 const unsigned char *tables;
 const unsigned char *base_of_tables;
 
-/* By default, the default C locale is used rather than what the building user
-happens to have set. However, if the -L option is given, set the locale from
-the LC_xxx environment variables. */
-
-if (argc > 1 && strcmp(argv[1], "-L") == 0)
-  {
-  setlocale(LC_ALL, "");        /* Set from environment variables */
-  i++;
-  }
-
 if (argc < i + 1)
   {
   fprintf(stderr, "dftables: one filename argument is required\n");

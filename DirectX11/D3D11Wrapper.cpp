@@ -104,9 +104,6 @@ static bool InitializeDLL()
 		G->gInitialized = true;
 	}
 
-	const char* default_locale = setlocale(LC_CTYPE, nullptr);
-	G->gDefaultLocale = default_locale ? default_locale : "";
-
 	LoadConfigFile();
 
 	G->bIntendedTargetExe = verify_intended_target_late();

@@ -5175,11 +5175,6 @@ if (pat_patctl.locale[0] != 0)
     fprintf(outfile, "** 'Locale' and 'tables' must not both be set\n");
     return PR_SKIP;
     }
-  if (setlocale(LC_CTYPE, (const char *)pat_patctl.locale) == NULL)
-    {
-    fprintf(outfile, "** Failed to set locale '%s'\n", pat_patctl.locale);
-    return PR_SKIP;
-    }
   if (strcmp((const char *)pat_patctl.locale, (const char *)locale_name) != 0)
     {
     strcpy((char *)locale_name, (char *)pat_patctl.locale);
@@ -8408,7 +8403,6 @@ while (notdone)
         SET(compiled_code, NULL);
         }
       skipping = FALSE;
-      setlocale(LC_CTYPE, "C");
       }
 
     /* Otherwise, if we are not skipping, and the line is not a data comment

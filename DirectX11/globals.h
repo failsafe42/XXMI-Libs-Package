@@ -420,7 +420,6 @@ static EnumName_t<const wchar_t*, InputDisableScope> InputDisableScopeNames[] = 
 struct Globals
 {
 	bool gInitialized;
-	std::string gDefaultLocale;
 	bool bIntendedTargetExe;
 	bool gReloadConfigPending;
 	bool gConfigInitialized;

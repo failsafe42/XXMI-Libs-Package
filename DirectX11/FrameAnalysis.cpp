@@ -2870,8 +2870,6 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 	// dumping for mResources
 	EnterCriticalSectionPretty(&G->mCriticalSection);
 
-	setlocale(LC_CTYPE, "en_US.UTF-8");
-
 	if (analyse_options & FrameAnalysisOptions::DUMP_CB)
 		DumpCBs(compute);
 
@@ -2891,8 +2889,6 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
 
 	if (analyse_options & FrameAnalysisOptions::DUMP_DEPTH && !compute)
 		DumpDepthStencilTargets();
-
-	setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
 
 	LeaveCriticalSection(&G->mCriticalSection);
 
@@ -2975,8 +2971,6 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
 	EnterCriticalSectionPretty(&G->mCriticalSection);
 
-	setlocale(LC_CTYPE, "en_US.UTF-8");
-
 	hr = FrameAnalysisFilenameResource(filename, MAX_PATH, target, resource, false);
 	if (FAILED(hr)) {
 		// If the ini section and resource name makes the filename too
@@ -2985,8 +2979,6 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 	}
 	if (SUCCEEDED(hr))
 		DumpResource(resource, filename, analyse_options, -1, format, stride, offset);
-
-	setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
 
 	LeaveCriticalSection(&G->mCriticalSection);
 

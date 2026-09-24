@@ -3875,12 +3875,6 @@ NULL to pcre2_maketables() means that malloc() is used to get the memory. */
 
 if (locale != NULL)
   {
-  if (setlocale(LC_CTYPE, locale) == NULL)
-    {
-    fprintf(stderr, "pcre2grep: Failed to set locale %s (obtained from %s)\n",
-      locale, locale_from);
-    goto EXIT2;
-    }
   character_tables = pcre2_maketables(NULL);
   pcre2_set_character_tables(compile_context, character_tables);
   }

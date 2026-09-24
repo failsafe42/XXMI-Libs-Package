@@ -4460,8 +4460,6 @@ void LoadConfigFile()
 	wchar_t iniFile[MAX_PATH], logFilename[MAX_PATH];
 	wchar_t setting[MAX_PATH];
 
-	setlocale(LC_CTYPE, "en_US.UTF-8");
-
 	if (!GetModuleFileName(migoto_handle, iniFile, MAX_PATH))
 		DoubleBeepExit();
 	wcsrchr(iniFile, L'\\')[1] = 0;
@@ -4920,8 +4918,6 @@ void LoadConfigFile()
 	if (G->hide_cursor || G->SCREEN_UPSCALING)
 		InstallMouseHooks(G->hide_cursor);
 
-	setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
-
 	emit_ini_warning_tone();
 }
 
@@ -4992,8 +4988,6 @@ bool SavePersistentSettings(bool force)
 	if (!G->user_config_dirty && !force)
 		return false;
 
-	setlocale(LC_CTYPE, "en_US.UTF-8");
-
 	// TODO: Ability to update existing file rather than overwriting:
 	//wfopen_ensuring_access(&f, G->user_config.c_str(), L"r+");
 	//if (!f)
@@ -5003,7 +4997,6 @@ bool SavePersistentSettings(bool force)
 	if (!f)
 	{
 		LogWarning("Unable to save settings in %S\n", G->user_config.c_str());
-		setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
 		return false;
 	}
 
@@ -5025,8 +5018,6 @@ bool SavePersistentSettings(bool force)
 
 	fclose(f);
 
-	setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
-
 	return true;
 }
 
@@ -5039,14 +5030,11 @@ bool SaveUnknownPersistentSettings()
 	if (unknown_variables.empty())
 		return false;
 
-	setlocale(LC_CTYPE, "en_US.UTF-8");
-
 	FILE* f;
 	wfopen_ensuring_access(&f, G->user_config.c_str(), L"a");
 	if (!f)
 	{
 		LogWarning("Unable to save unknown settings in %S\n", G->user_config.c_str());
-		setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
 		return false;
 	}
 
@@ -5056,8 +5044,6 @@ bool SaveUnknownPersistentSettings()
 		fprintf_s(f, "%ls = %.9g\n", entry.first.c_str(), entry.second);
 
 	fclose(f);
-
-	setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
 
 	return true;
 }
@@ -5206,8 +5192,6 @@ void ReloadConfig(HackerDevice *device)
 
 		G->current_unknown_settings_hash = HashUnknownSettings();
 
-		setlocale(LC_CTYPE, "en_US.UTF-8");
-
 		optimise_command_lists(device);
 
 		MarkAllShadersDeferredUnprocessed();
@@ -5243,8 +5227,6 @@ void ReloadConfig(HackerDevice *device)
 		CriticalSectionGuard(&G->mCriticalSection);
 		HandleUnknownPersistentSettings();
 	}
-
-	setlocale(LC_CTYPE, G->gDefaultLocale.c_str());
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = stop - start;
