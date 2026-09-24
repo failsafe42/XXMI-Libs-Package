@@ -62,14 +62,16 @@ build = "cmd /c build.bat"
 
 [target.win-64.tasks]
 "toolchain" = { cmd = "zig version", description = "Print the installed Zig version" }
-"zigbuild" = { cmd = "zig build", description = "Zig debug build of d3d11.dll (zig-out\\bin\\d3d11.dll)" }
-"zigbuild:release" = { cmd = "zig build -Drelease=true", description = "Zig ReleaseSmall build of d3d11.dll" }
+"generate-version" = { cmd = "powershell -ExecutionPolicy Bypass tools/generate-version.ps1", description = "Generate version.generated.h" }
+"zigbuild" = { cmd = "zig build", depends-on= ["generate-version"], description = "Zig debug build of d3d11.dll (zig-out\\bin\\d3d11.dll)" }
+"zigbuild:release" = { cmd = "zig build -Drelease=true", depends-on= ["generate-version"], description = "Zig ReleaseSmall build of d3d11.dll" }
 
 [target.linux-64.tasks]
 # Sanity check that Zig is wired up correctly.
 "toolchain" = { cmd = "zig version", description = "Print the installed Zig version" }
-"zigbuild" = { cmd = "zig build", description = "Zig debug build of d3d11.dll (zig-out\\bin\\d3d11.dll)" }
-"zigbuild:release" = { cmd = "zig build -Drelease=true", description = "Zig ReleaseSmall build of d3d11.dll" }
+"generate-version" = { cmd = "bash tools/generate-version.sh", description = "Generate version.generated.h" }
+"zigbuild" = { cmd = "zig build", depends-on= ["generate-version"], description = "Zig debug build of d3d11.dll (zig-out\\bin\\d3d11.dll)" }
+"zigbuild:release" = { cmd = "zig build -Drelease=true", depends-on= ["generate-version"], description = "Zig ReleaseSmall build of d3d11.dll" }
 
 # Compile a trivial Windows exe with the cross toolchain to prove the
 # cross-compilation environment itself works end-to-end.
