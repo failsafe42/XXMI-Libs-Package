@@ -28,6 +28,7 @@ const pcre2_static_srcs = &[_][]const u8{
 };
 
 const directxtk_srcs = &[_][]const u8{
+    "DirectXTK/Src/BufferHelpers.cpp",
     "DirectXTK/Src/SpriteBatch.cpp",
     "DirectXTK/Src/SpriteFont.cpp",
     "DirectXTK/Src/CommonStates.cpp",
@@ -124,8 +125,8 @@ pub fn build(b: *std.Build) void {
     });
     directxtk_mod.addIncludePath(b.path("DirectXTK/Inc"));
     directxtk_mod.addIncludePath(b.path("DirectXTK/Src"));
+    directxtk_mod.addIncludePath(b.path("DirectXTK/Src/Shaders/Compiled"));
     directxtk_mod.addIncludePath(b.path("DirectXMath"));
-    directxtk_mod.addCMacro("_XM_NO_INTRINSICS_", "1");
     directxtk_mod.addCMacro("_WIN7_PLATFORM_UPDATE", "1");
     directxtk_mod.addCMacro("WIN32", "1");
     directxtk_mod.addCMacro("NDEBUG", "1");
@@ -203,7 +204,6 @@ pub fn build(b: *std.Build) void {
         .{ "CRC32C_STATIC", "1" },
         .{ "PCRE2_STATIC", "1" },
         .{ "PCRE2_CODE_UNIT_WIDTH", "8" },
-        .{ "_XM_NO_INTRINSICS_", "1" },
         .{ "COM_STDMETHOD_CAN_THROW", "1" },
         .{ "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES", "1" },
         .{ "_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT", "1" },
